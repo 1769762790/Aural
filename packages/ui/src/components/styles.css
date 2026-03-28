@@ -1,0 +1,114 @@
+.aural-button {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  color: var(--aural-text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 18px;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    border-color 160ms ease,
+    opacity 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.aural-button:hover {
+  transform: translateY(-1px);
+}
+
+.aural-button--primary {
+  background: linear-gradient(135deg, var(--aural-accent), var(--aural-accent-strong));
+  box-shadow: 0 10px 24px rgba(157, 137, 255, 0.28);
+  color: #0c0816;
+  font-weight: 700;
+}
+
+.aural-button--ghost {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--aural-border);
+}
+
+.aural-button--soft {
+  background: var(--aural-accent-soft);
+  border: 1px solid rgba(157, 137, 255, 0.2);
+}
+
+.aural-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--aural-radius-md);
+  border: 1px solid var(--aural-border);
+  background: linear-gradient(180deg, rgba(18, 16, 24, 0.96), rgba(13, 12, 18, 0.92));
+  box-shadow: var(--aural-shadow-card);
+}
+
+.aural-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(157, 137, 255, 0.12);
+  border: 1px solid rgba(157, 137, 255, 0.18);
+  color: var(--aural-text);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.aural-section-heading {
+  display: grid;
+  gap: 6px;
+}
+
+.aural-section-heading h2 {
+  margin: 0;
+  font-family: var(--aural-font-display);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.aural-section-heading p {
+  margin: 0;
+  color: var(--aural-text-muted);
+  font-size: 13px;
+  line-height: 1.7;
+  max-width: 680px;
+}
+
+.aural-section-heading__eyebrow,
+.aural-empty-state__eyebrow {
+  color: var(--aural-accent-strong);
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.aural-empty-state {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  max-width: 540px;
+  padding: 32px;
+}
+
+.aural-empty-state h2 {
+  margin: 0;
+  font-family: var(--aural-font-display);
+  font-size: 32px;
+  line-height: 1.04;
+}
+
+.aural-empty-state p {
+  margin: 0;
+  color: var(--aural-text-muted);
+  line-height: 1.7;
+}

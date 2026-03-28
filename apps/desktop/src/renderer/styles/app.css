@@ -1,0 +1,1422 @@
+.aural-shell-grid {
+  display: grid;
+  grid-template-columns: var(--aural-nav-width) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) var(--aural-player-height);
+  height: 100vh;
+  width: 100vw;
+  padding: 0;
+  gap: 0;
+}
+
+.aural-sidebar {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 22px;
+  padding: 26px 14px 18px;
+  background:
+    linear-gradient(180deg, rgba(17, 15, 22, 0.98), rgba(12, 11, 16, 0.98)),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02), transparent);
+  border-right: 1px solid rgba(147, 131, 211, 0.14);
+}
+
+.aural-sidebar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(157, 137, 255, 0.24), transparent 28%, transparent 72%, rgba(157, 137, 255, 0.18));
+}
+
+.aural-brand {
+  display: grid;
+  gap: 4px;
+  padding: 0 12px;
+}
+
+.aural-brand p,
+.aural-brand span {
+  margin: 0;
+}
+
+.aural-brand p {
+  font-family: var(--aural-font-display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.aural-brand span,
+.aural-sidebar__label {
+  color: var(--aural-text-muted);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.aural-sidebar__section {
+  display: grid;
+  gap: 14px;
+}
+
+.aural-sidebar__label {
+  margin: 0;
+  padding: 0 12px;
+}
+
+.aural-nav {
+  display: grid;
+  gap: 4px;
+}
+
+.aural-nav__item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 46px;
+  padding: 0 12px;
+  border-radius: 0;
+  color: var(--aural-text-muted);
+  transition: background-color 180ms ease, color 180ms ease, padding-left 180ms ease;
+}
+
+.aural-nav__item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 2px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.aural-nav__item:hover,
+.aural-nav__item.is-active {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--aural-text);
+  padding-left: 16px;
+}
+
+.aural-nav__item.is-active::before {
+  background: var(--aural-accent);
+  box-shadow: 0 0 18px rgba(157, 137, 255, 0.45);
+}
+
+.aural-nav__glyph {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  position: relative;
+}
+
+.aural-nav__glyph::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.aural-nav__glyph--2 {
+  border-radius: 50%;
+}
+
+.aural-nav__glyph--3::after {
+  inset: 3px 5px;
+}
+
+.aural-nav__glyph--4::after {
+  inset: 5px 3px;
+}
+
+.aural-nav__glyph--5 {
+  border-radius: 3px;
+}
+
+.aural-nav__copy {
+  display: grid;
+  gap: 2px;
+}
+
+.aural-nav__copy strong,
+.aural-nav__copy small {
+  margin: 0;
+}
+
+.aural-nav__copy strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.aural-nav__copy small {
+  color: var(--aural-text-faint);
+  font-size: 11px;
+}
+
+.aural-sidebar__spacer {
+  min-height: 0;
+}
+
+.aural-sidebar__spotlight {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(147, 131, 211, 0.12);
+}
+
+.aural-sidebar__spotlight-art,
+.aural-player-bar__cover {
+  background:
+    radial-gradient(circle at 26% 24%, rgba(148, 117, 255, 0.44), transparent 28%),
+    linear-gradient(145deg, rgba(31, 28, 43, 0.98), rgba(10, 10, 13, 0.98));
+  background-size: cover;
+  background-position: center;
+}
+
+.aural-sidebar__spotlight-art {
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+}
+
+.aural-sidebar__spotlight-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.aural-sidebar__spotlight-copy strong,
+.aural-sidebar__spotlight-copy p {
+  margin: 0;
+}
+
+.aural-sidebar__spotlight-copy strong {
+  font-size: 13px;
+}
+
+.aural-sidebar__spotlight-copy p {
+  color: var(--aural-text-muted);
+  font-size: 11px;
+}
+
+.aural-sidebar__spotlight-action {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid rgba(157, 137, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(157, 137, 255, 0.12);
+  color: var(--aural-text);
+  cursor: pointer;
+}
+
+.aural-content {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  background: rgba(8, 8, 11, 0.96);
+}
+
+.aural-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  min-height: 72px;
+  padding: 0 24px;
+  border-bottom: 1px solid rgba(147, 131, 211, 0.08);
+}
+
+.aural-global-search {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: min(100%, 420px);
+  min-height: 40px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(147, 131, 211, 0.08);
+}
+
+.aural-global-search__icon {
+  color: var(--aural-text-faint);
+  font-size: 13px;
+}
+
+.aural-global-search input {
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--aural-text);
+}
+
+.aural-global-search input::placeholder {
+  color: var(--aural-text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 11px;
+}
+
+.aural-topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.aural-topbar__icon {
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(147, 131, 211, 0.12);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--aural-text-muted);
+  cursor: pointer;
+}
+
+.aural-user-pill {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.aural-user-pill__copy {
+  display: grid;
+  gap: 2px;
+  text-align: right;
+}
+
+.aural-user-pill__copy strong {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.aural-user-pill__copy small {
+  color: var(--aural-accent-strong);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.aural-user-pill__avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  background: radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.18), rgba(157, 137, 255, 0.18));
+}
+
+.aural-view {
+  min-height: 0;
+  overflow: auto;
+}
+
+.aural-page {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 100%;
+  padding: var(--aural-page-padding);
+  gap: var(--aural-page-gap);
+}
+
+.aural-page__body {
+  min-height: 0;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(147, 131, 211, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.aural-page__body--stretch {
+  display: block;
+  background: transparent;
+  border: 0;
+}
+
+.aural-home-page {
+  gap: 22px;
+}
+
+.aural-library-scene {
+  gap: 18px;
+}
+
+.aural-library-tabs {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  min-height: 44px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(147, 131, 211, 0.08);
+}
+
+.aural-library-tabs button {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--aural-text-faint);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+.aural-library-tabs button.is-active {
+  color: var(--aural-text);
+}
+
+.aural-library-tabs button.is-active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: -4px;
+  bottom: -13px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--aural-accent);
+  box-shadow: 0 0 16px rgba(157, 137, 255, 0.42);
+}
+
+.aural-song-library {
+  position: relative;
+  display: grid;
+  gap: 22px;
+  min-height: 100%;
+}
+
+.aural-song-library__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.aural-song-library__pills {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.aural-song-library__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+  padding: 0 22px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--aural-text);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.aural-song-library__pill.is-primary {
+  border-color: transparent;
+  background: linear-gradient(135deg, #9d89ff, #bfa2ff);
+  color: #120b24;
+  box-shadow: 0 10px 24px rgba(157, 137, 255, 0.32);
+}
+
+.aural-song-library__sort {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.aural-song-library__sort span,
+.aural-song-library__sort strong {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.aural-song-library__sort span {
+  color: var(--aural-text-faint);
+}
+
+.aural-song-library__sort strong {
+  color: var(--aural-text);
+}
+
+.aural-song-library__table {
+  position: relative;
+  display: grid;
+  gap: 10px;
+}
+
+.aural-song-library__head,
+.aural-song-row {
+  display: grid;
+  grid-template-columns: 44px minmax(280px, 1.6fr) 1fr 1fr 70px;
+  align-items: center;
+  gap: 18px;
+}
+
+.aural-song-library__head {
+  padding: 0 12px;
+  color: var(--aural-text-faint);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+
+.aural-song-library__body {
+  display: grid;
+  gap: 6px;
+}
+
+.aural-song-row {
+  position: relative;
+  padding: 0 12px;
+  min-height: 50px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.aural-song-row.is-selected {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.aural-song-row.is-selected::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 3px;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--aural-accent);
+}
+
+.aural-song-row__index,
+.aural-song-row__duration {
+  color: var(--aural-text-muted);
+  font-size: 14px;
+}
+
+.aural-song-row__title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.aural-song-row__art {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 28% 22%, rgba(157, 137, 255, 0.36), transparent 26%),
+    linear-gradient(145deg, rgba(32, 28, 43, 0.96), rgba(11, 11, 14, 0.98));
+  background-size: cover;
+  background-position: center;
+}
+
+.aural-song-row__title-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.aural-song-row__title-copy strong,
+.aural-song-row__title-copy small {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.aural-song-row__title-copy strong {
+  font-size: 15px;
+}
+
+.aural-song-row__title-copy small {
+  color: var(--aural-accent-strong);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.aural-song-row__menu-trigger {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  opacity: 0;
+  min-width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--aural-text-muted);
+  cursor: pointer;
+}
+
+.aural-song-row:hover .aural-song-row__menu-trigger,
+.aural-song-row.is-selected .aural-song-row__menu-trigger {
+  opacity: 1;
+}
+
+.aural-song-library__menu {
+  position: absolute;
+  top: 162px;
+  left: 256px;
+  width: 192px;
+  padding: 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(147, 131, 211, 0.12);
+  background: rgba(42, 39, 44, 0.94);
+  box-shadow: 0 28px 54px rgba(0, 0, 0, 0.34);
+  display: grid;
+  gap: 2px;
+}
+
+.aural-song-library__menu button {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--aural-text);
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+}
+
+.aural-song-library__menu button:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.aural-song-library__menu button.is-danger {
+  color: #ff7e97;
+}
+
+.aural-song-library__menu-divider {
+  height: 1px;
+  margin: 4px 0;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.aural-curation-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.aural-spotlight-card {
+  display: grid;
+  gap: 14px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.aural-spotlight-card__art {
+  aspect-ratio: 0.96;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 28% 22%, rgba(255, 109, 83, 0.42), transparent 26%),
+    linear-gradient(145deg, rgba(36, 23, 14, 0.98), rgba(11, 11, 14, 0.98));
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 20px 34px rgba(0, 0, 0, 0.24);
+}
+
+.aural-spotlight-card__copy {
+  display: grid;
+  gap: 4px;
+}
+
+.aural-spotlight-card__copy strong,
+.aural-spotlight-card__copy p {
+  margin: 0;
+}
+
+.aural-spotlight-card__copy strong {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.aural-spotlight-card__copy p {
+  color: var(--aural-text-muted);
+}
+
+.aural-home-showcase {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(260px, 0.78fr);
+  gap: 30px;
+  align-items: start;
+}
+
+.aural-home-showcase__left,
+.aural-home-showcase__right {
+  display: grid;
+  gap: 18px;
+}
+
+.aural-home-showcase__heading {
+  display: grid;
+  gap: 6px;
+}
+
+.aural-home-showcase__heading h3,
+.aural-home-showcase__heading p {
+  margin: 0;
+}
+
+.aural-home-showcase__heading h3 {
+  font-family: var(--aural-font-display);
+  font-size: 20px;
+  letter-spacing: -0.04em;
+}
+
+.aural-home-showcase__heading p {
+  color: var(--aural-text-muted);
+  font-size: 13px;
+}
+
+.aural-signature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.aural-signature-card {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(147, 131, 211, 0.1);
+}
+
+.aural-signature-card__mosaic {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+}
+
+.aural-signature-card__tile {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(157, 137, 255, 0.36), transparent 24%),
+    linear-gradient(145deg, rgba(35, 32, 45, 0.96), rgba(16, 16, 22, 0.96));
+  background-size: cover;
+  background-position: center;
+}
+
+.aural-signature-card__copy {
+  display: grid;
+  gap: 4px;
+}
+
+.aural-signature-card__copy strong,
+.aural-signature-card__copy p,
+.aural-signature-card__copy small {
+  margin: 0;
+}
+
+.aural-signature-card__copy strong {
+  font-size: 18px;
+}
+
+.aural-signature-card__copy p,
+.aural-signature-card__copy small {
+  color: var(--aural-text-muted);
+}
+
+.aural-signature-card__copy small {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.aural-discovery-panel {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(147, 131, 211, 0.1);
+}
+
+.aural-discovery-panel__item {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.aural-discovery-panel__dot {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: block;
+  background: rgba(157, 137, 255, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.aural-discovery-panel__dot.is-violet {
+  background: radial-gradient(circle at 35% 35%, rgba(225, 198, 255, 0.56), rgba(157, 137, 255, 0.32));
+}
+
+.aural-discovery-panel__dot.is-indigo {
+  background: radial-gradient(circle at 35% 35%, rgba(191, 205, 255, 0.56), rgba(94, 120, 255, 0.28));
+}
+
+.aural-discovery-panel__dot.is-cyan {
+  background: radial-gradient(circle at 35% 35%, rgba(191, 255, 248, 0.56), rgba(65, 208, 216, 0.28));
+}
+
+.aural-discovery-panel__copy {
+  display: grid;
+  gap: 3px;
+}
+
+.aural-discovery-panel__copy strong,
+.aural-discovery-panel__copy p,
+.aural-discovery-panel__copy small {
+  margin: 0;
+}
+
+.aural-discovery-panel__copy p,
+.aural-discovery-panel__copy small {
+  color: var(--aural-text-muted);
+}
+
+.aural-discovery-panel__copy small {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+
+.aural-player-bar {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(360px, 1.1fr) minmax(240px, 0.9fr);
+  align-items: center;
+  gap: 20px;
+  padding: 14px 20px;
+  background: rgba(16, 14, 20, 0.98);
+  border-top: 1px solid rgba(147, 131, 211, 0.12);
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.2);
+}
+
+.aural-player-bar__meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.aural-player-bar__cover {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+}
+
+.aural-player-bar__meta strong,
+.aural-player-bar__meta p {
+  display: block;
+  margin: 0;
+}
+
+.aural-player-bar__meta strong {
+  font-size: 14px;
+}
+
+.aural-player-bar__meta p {
+  color: var(--aural-text-muted);
+  font-size: 12px;
+}
+
+.aural-player-bar__center {
+  display: grid;
+  gap: 10px;
+}
+
+.aural-player-bar__controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.aural-player-bar__controls button {
+  min-width: 42px;
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid rgba(147, 131, 211, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--aural-text);
+  cursor: pointer;
+}
+
+.aural-player-bar__controls button.is-primary {
+  background: linear-gradient(135deg, var(--aural-accent), var(--aural-accent-strong));
+  color: #100b1e;
+  border-color: transparent;
+}
+
+.aural-player-bar__timeline {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 42px;
+  align-items: center;
+  gap: 10px;
+}
+
+.aural-player-bar__timeline small,
+.aural-player-bar__utility span {
+  color: var(--aural-text-muted);
+  font-size: 11px;
+}
+
+.aural-player-bar__track,
+.aural-player-bar__volume-track {
+  position: relative;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.aural-player-bar__track span,
+.aural-player-bar__volume-track span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--aural-accent), var(--aural-accent-strong));
+}
+
+.aural-player-bar__utility {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+}
+
+.aural-player-bar__queue {
+  display: grid;
+  justify-items: end;
+}
+
+.aural-player-bar__queue strong {
+  font-family: var(--aural-font-display);
+  font-size: 20px;
+}
+
+.aural-player-bar__volume {
+  display: grid;
+  gap: 6px;
+  min-width: 100px;
+}
+
+.aural-player-bar__open {
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid rgba(147, 131, 211, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--aural-text);
+  cursor: pointer;
+}
+
+.aural-home-grid,
+.aural-search-grid,
+.aural-collection-grid,
+.aural-settings-grid {
+  display: grid;
+  gap: 20px;
+}
+
+.aural-search-grid,
+.aural-collection-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.aural-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.aural-metric-card,
+.aural-panel-frame,
+.aural-chip-card,
+.aural-folder-item,
+.aural-album-tile,
+.aural-setting-item {
+  border-radius: 22px;
+  border: 1px solid rgba(147, 131, 211, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.aural-metric-card {
+  padding: 20px;
+  display: grid;
+  gap: 10px;
+}
+
+.aural-metric-card span,
+.aural-panel-frame__header span {
+  color: var(--aural-accent-strong);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.aural-metric-card strong {
+  font-family: var(--aural-font-display);
+  font-size: 32px;
+}
+
+.aural-metric-card p {
+  margin: 0;
+  color: var(--aural-text-muted);
+}
+
+.aural-panel-frame {
+  padding: var(--aural-panel-padding);
+  display: grid;
+  gap: 18px;
+  min-height: 0;
+}
+
+.aural-panel-frame__header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.aural-panel-frame__header h3,
+.aural-panel-frame__header small {
+  margin: 0;
+}
+
+.aural-panel-frame__header h3 {
+  font-family: var(--aural-font-display);
+  font-size: 22px;
+}
+
+.aural-panel-frame__header small,
+.aural-panel-frame__empty {
+  color: var(--aural-text-muted);
+}
+
+.aural-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.aural-toolbar--stack {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.aural-toolbar__group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.aural-toolbar__actions,
+.aural-toolbar__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.aural-tab-strip {
+  display: inline-flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.aural-tab-strip button {
+  min-width: 86px;
+  min-height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--aural-text-muted);
+  cursor: pointer;
+}
+
+.aural-tab-strip button.is-active {
+  background: rgba(157, 137, 255, 0.16);
+  color: var(--aural-text);
+}
+
+.aural-search-field {
+  display: grid;
+  gap: 8px;
+  min-width: 340px;
+}
+
+.aural-search-field span {
+  color: var(--aural-text-faint);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.aural-search-field input {
+  min-height: 46px;
+  padding: 0 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(147, 131, 211, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--aural-text);
+}
+
+.aural-track-table {
+  display: grid;
+  min-height: 0;
+}
+
+.aural-track-table__header,
+.aural-track-row {
+  display: grid;
+  grid-template-columns: 2.2fr 1.2fr 1.2fr 0.8fr 1fr 88px;
+  gap: 16px;
+  align-items: center;
+}
+
+.aural-track-table__header {
+  padding: 0 18px 12px;
+  color: var(--aural-text-faint);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.aural-track-table__body {
+  display: grid;
+  gap: 8px;
+}
+
+.aural-track-row {
+  width: 100%;
+  padding: var(--aural-row-padding-y) var(--aural-row-padding-x);
+  border: 1px solid rgba(147, 131, 211, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.aural-track-row strong,
+.aural-track-row small,
+.aural-chip-card p,
+.aural-folder-item p,
+.aural-folder-item small,
+.aural-album-tile p,
+.aural-album-tile small,
+.aural-setting-item p {
+  display: block;
+}
+
+.aural-track-row strong,
+.aural-chip-card strong,
+.aural-folder-item strong,
+.aural-album-tile strong,
+.aural-setting-item strong {
+  margin-bottom: 4px;
+}
+
+.aural-track-row small,
+.aural-chip-card p,
+.aural-folder-item p,
+.aural-folder-item small,
+.aural-album-tile p,
+.aural-album-tile small,
+.aural-setting-item p {
+  color: var(--aural-text-muted);
+}
+
+.aural-track-row span:last-child {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.aural-track-row span:last-child button {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgba(147, 131, 211, 0.12);
+  border-radius: 999px;
+  background: rgba(157, 137, 255, 0.08);
+  /* color: var(--aural-text); */
+  cursor: pointer;
+}
+
+.aural-album-grid,
+.aural-chip-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+.aural-album-tile,
+.aural-chip-card,
+.aural-folder-item,
+.aural-setting-item {
+  padding: 18px;
+}
+
+.aural-album-tile {
+  display: grid;
+  gap: 14px;
+}
+
+.aural-album-tile__cover {
+  aspect-ratio: 1;
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 28% 28%, rgba(157, 137, 255, 0.32), transparent 20%),
+    linear-gradient(145deg, rgba(32, 28, 43, 0.96), rgba(11, 11, 14, 0.98));
+}
+
+.aural-folder-list,
+.aural-setting-list {
+  display: grid;
+  gap: 14px;
+}
+
+.aural-setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.aural-player-page {
+  gap: 18px;
+}
+
+.aural-player-stage {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.95fr) minmax(0, 1.1fr) minmax(300px, 0.8fr);
+  gap: 18px;
+  min-height: 0;
+}
+
+.aural-player-stage__cover {
+  min-height: 560px;
+  display: grid;
+  align-items: end;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(177, 153, 255, 0.16), transparent 20%),
+    radial-gradient(circle at 75% 30%, rgba(86, 118, 255, 0.16), transparent 26%),
+    linear-gradient(155deg, rgba(14, 13, 19, 0.98), rgba(22, 19, 28, 0.92));
+  background-size: cover;
+  background-position: center;
+}
+
+:root[data-aural-cover-color="off"] .aural-player-stage__cover,
+:root[data-aural-cover-color="off"] .aural-player-bar__cover,
+:root[data-aural-cover-color="off"] .aural-sidebar__spotlight-art {
+  filter: saturate(0.7);
+}
+
+.aural-player-stage__cover--art {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+}
+
+.aural-player-stage__overlay {
+  display: grid;
+  gap: 18px;
+  width: 100%;
+  padding: 28px;
+  background: linear-gradient(180deg, transparent, rgba(7, 7, 10, 0.74) 34%, rgba(7, 7, 10, 0.96));
+}
+
+.aural-player-stage__meta {
+  display: grid;
+  gap: 8px;
+}
+
+.aural-player-stage__meta strong,
+.aural-player-stage__meta p {
+  margin: 0;
+}
+
+.aural-player-stage__meta strong {
+  font-family: var(--aural-font-display);
+  font-size: 34px;
+}
+
+.aural-player-stage__meta p {
+  color: var(--aural-text-muted);
+}
+
+.aural-player-stage__controls {
+  display: grid;
+  gap: 14px;
+}
+
+.aural-mode-switch {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.aural-slider-field {
+  display: grid;
+  gap: 10px;
+}
+
+.aural-slider-field span {
+  color: var(--aural-text-faint);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.aural-slider-field input {
+  width: 100%;
+}
+
+.aural-player-stage__vinyl {
+  width: min(100%, 380px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  justify-self: center;
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.06) 0 10%, transparent 11% 100%),
+    repeating-radial-gradient(circle at center, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 8px),
+    linear-gradient(135deg, rgba(98, 79, 188, 0.85), rgba(11, 10, 16, 0.96));
+  box-shadow: inset 0 0 0 14px rgba(4, 3, 8, 0.6), 0 36px 90px rgba(0, 0, 0, 0.38);
+}
+
+.aural-lyric-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.aural-lyric-stack--left {
+  text-align: left;
+}
+
+.aural-lyric-stack--center {
+  text-align: center;
+}
+
+.aural-lyric-stack p {
+  margin: 0;
+  color: var(--aural-text-muted);
+  line-height: 1.8;
+}
+
+.aural-lyric-stack p.is-active {
+  color: var(--aural-text);
+  font-size: 18px;
+}
+
+.aural-queue-list {
+  display: grid;
+  gap: 10px;
+}
+
+.aural-queue-item {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(147, 131, 211, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.aural-queue-item.is-active {
+  border-color: rgba(157, 137, 255, 0.28);
+  background: rgba(157, 137, 255, 0.1);
+}
+
+.aural-queue-item strong,
+.aural-queue-item p {
+  margin: 0;
+}
+
+.aural-queue-item p {
+  color: var(--aural-text-muted);
+  margin-top: 4px;
+}
+
+.aural-queue-item small {
+  display: block;
+  margin-top: 8px;
+  color: var(--aural-text-faint);
+}
+
+@media (max-width: 1280px) {
+  .aural-shell-grid {
+    grid-template-columns: 188px minmax(0, 1fr);
+  }
+
+  .aural-curation-strip,
+  .aural-home-showcase,
+  .aural-search-grid,
+  .aural-collection-grid,
+  .aural-player-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .aural-signature-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .aural-song-library__head,
+  .aural-song-row {
+    grid-template-columns: 38px minmax(220px, 1.6fr) 1fr 1fr 60px;
+  }
+
+  .aural-player-bar {
+    grid-template-columns: 1fr;
+    justify-items: stretch;
+  }
+}

@@ -1,0 +1,123 @@
+:root {
+  --aural-bg: #08080b;
+  --aural-bg-elevated: rgba(20, 18, 25, 0.9);
+  --aural-bg-muted: rgba(28, 24, 36, 0.76);
+  --aural-surface: rgba(16, 15, 20, 0.94);
+  --aural-surface-strong: rgba(23, 21, 30, 0.98);
+  --aural-border: rgba(143, 129, 208, 0.16);
+  --aural-text: #f4f1fb;
+  --aural-text-muted: rgba(244, 241, 251, 0.56);
+  --aural-text-faint: rgba(244, 241, 251, 0.34);
+  --aural-danger: #ff8fa6;
+  --aural-accent: #9d89ff;
+  --aural-accent-strong: #c3a8ff;
+  --aural-accent-soft: rgba(157, 137, 255, 0.14);
+  --aural-radius-sm: 16px;
+  --aural-radius-md: 24px;
+  --aural-radius-lg: 30px;
+  --aural-shadow-soft: 0 24px 60px rgba(0, 0, 0, 0.34);
+  --aural-shadow-card: 0 12px 28px rgba(0, 0, 0, 0.28);
+  --aural-font-display: "Aptos Display", "Segoe UI Variable Display", sans-serif;
+  --aural-font-body: "Aptos", "Segoe UI Variable Text", sans-serif;
+  --aural-nav-width: 204px;
+  --aural-player-height: 94px;
+  --aural-page-padding: 32px;
+  --aural-page-gap: 28px;
+  --aural-panel-padding: 22px;
+  --aural-row-padding-y: 15px;
+  --aural-row-padding-x: 16px;
+  --aural-body-accent-a: rgba(125, 91, 255, 0.12);
+  --aural-body-accent-b: rgba(82, 110, 255, 0.08);
+  --aural-body-gradient-start: #08080b;
+  --aural-body-gradient-mid: #0a0a10;
+  --aural-body-gradient-end: #09090d;
+}
+
+:root[data-aural-theme="light"] {
+  --aural-bg: #f5f2fc;
+  --aural-bg-elevated: rgba(255, 255, 255, 0.92);
+  --aural-bg-muted: rgba(240, 236, 248, 0.9);
+  --aural-surface: rgba(255, 255, 255, 0.94);
+  --aural-surface-strong: rgba(255, 255, 255, 0.98);
+  --aural-border: rgba(122, 105, 167, 0.14);
+  --aural-text: #171320;
+  --aural-text-muted: rgba(23, 19, 32, 0.58);
+  --aural-text-faint: rgba(23, 19, 32, 0.34);
+  --aural-shadow-soft: 0 20px 40px rgba(69, 60, 92, 0.12);
+  --aural-shadow-card: 0 12px 24px rgba(69, 60, 92, 0.1);
+  --aural-body-accent-a: rgba(157, 137, 255, 0.09);
+  --aural-body-accent-b: rgba(104, 132, 255, 0.08);
+  --aural-body-gradient-start: #f8f5fe;
+  --aural-body-gradient-mid: #f3effb;
+  --aural-body-gradient-end: #efebf8;
+}
+
+:root[data-aural-density="compact"] {
+  --aural-page-padding: 26px;
+  --aural-page-gap: 22px;
+  --aural-panel-padding: 18px;
+  --aural-row-padding-y: 12px;
+  --aural-row-padding-x: 14px;
+}
+
+:root[data-aural-density="roomy"] {
+  --aural-page-padding: 38px;
+  --aural-page-gap: 32px;
+  --aural-panel-padding: 24px;
+  --aural-row-padding-y: 18px;
+  --aural-row-padding-x: 20px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background:
+    linear-gradient(90deg, rgba(114, 94, 189, 0.06) 0, rgba(114, 94, 189, 0.02) 1px, transparent 1px, transparent 18px),
+    radial-gradient(circle at top left, var(--aural-body-accent-a), transparent 26%),
+    radial-gradient(circle at 82% 16%, var(--aural-body-accent-b), transparent 20%),
+    linear-gradient(180deg, var(--aural-body-gradient-start) 0%, var(--aural-body-gradient-mid) 48%, var(--aural-body-gradient-end) 100%);
+  background-size: 18px 18px, auto, auto, auto;
+  color: var(--aural-text);
+  font-family: var(--aural-font-body);
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+}
+
+:root[data-aural-motion="off"] *,
+:root[data-aural-motion="off"] *::before,
+:root[data-aural-motion="off"] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(157, 137, 255, 0.22);
+  border-radius: 999px;
+}

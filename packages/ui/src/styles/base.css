@@ -1,0 +1,36 @@
+.aural-shell-grid {
+  display: grid;
+  grid-template-columns: var(--aural-nav-width) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) var(--aural-player-height);
+  height: 100vh;
+  width: 100vw;
+  padding: 18px;
+  gap: 18px;
+}
+
+.aural-panel {
+  background: linear-gradient(180deg, var(--aural-surface-strong), var(--aural-surface));
+  border: 1px solid var(--aural-border);
+  box-shadow: var(--aural-shadow-soft);
+  backdrop-filter: blur(24px);
+}
+
+.aural-noise::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.08;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.5) 0.6px, transparent 0.6px),
+    radial-gradient(circle at 80% 30%, rgba(255, 255, 255, 0.28) 0.8px, transparent 0.8px);
+  background-size: 140px 140px;
+}
+
+.aural-status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--aural-accent);
+  box-shadow: 0 0 0 8px rgba(138, 199, 255, 0.09);
+}

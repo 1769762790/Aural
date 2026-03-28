@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "allowJs": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@aural/contracts": ["packages/contracts/src/index.ts"],
+      "@aural/contracts/*": ["packages/contracts/src/*"],
+      "@aural/domain": ["packages/domain/src/index.ts"],
+      "@aural/domain/*": ["packages/domain/src/*"],
+      "@aural/domain/src/*": ["packages/domain/src/*"],
+      "@aural/data": ["packages/data/src/index.ts"],
+      "@aural/data/*": ["packages/data/src/*"],
+      "@aural/library": ["packages/library/src/index.ts"],
+      "@aural/library/*": ["packages/library/src/*"],
+      "@aural/player": ["packages/player/src/index.ts"],
+      "@aural/player/*": ["packages/player/src/*"],
+      "@aural/search": ["packages/search/src/index.ts"],
+      "@aural/search/*": ["packages/search/src/*"],
+      "@aural/ui": ["packages/ui/src/index.ts"],
+      "@aural/ui/*": ["packages/ui/src/*"],
+      "@/*": ["apps/desktop/src/renderer/*"],
+      "@renderer/*": ["apps/desktop/src/renderer/*"],
+      "@main/*": ["apps/desktop/src/main/*"],
+      "@preload/*": ["apps/desktop/src/preload/*"]
+    }
+  }
+}

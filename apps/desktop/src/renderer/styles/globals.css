@@ -1,0 +1,209 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme inline {
+  --font-sans: "Plus Jakarta Sans", "Aptos", "Segoe UI Variable Text", "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --radius: 1.125rem;
+  --titlebar-area-height: env(titlebar-area-height, 0px);
+  --background: #f5f2ec;
+  --foreground: #14151b;
+  --card: rgba(255, 255, 255, 0.86);
+  --card-foreground: #14151b;
+  --popover: rgba(255, 255, 255, 0.94);
+  --popover-foreground: #12131a;
+  --primary: #8ac7ff;
+  --primary-foreground: #08121d;
+  --destructive: #e25b65;
+  --destructive-foreground: #fff7f7;
+  --secondary: rgba(17, 24, 39, 0.06);
+  --secondary-foreground: #17202f;
+  --muted: rgba(17, 24, 39, 0.05);
+  --muted-foreground: rgba(50, 61, 81, 0.72);
+  --accent: rgba(138, 199, 255, 0.18);
+  --accent-foreground: #0e1726;
+  --border: rgba(17, 24, 39, 0.1);
+  --input: rgba(17, 24, 39, 0.08);
+  --ring: #52a5ff;
+  --sidebar: rgba(248, 245, 240, 0.94);
+  --sidebar-foreground: #17181f;
+  --sidebar-accent: rgba(138, 199, 255, 0.18);
+  --sidebar-accent-foreground: #12131a;
+  --sidebar-border: rgba(138, 199, 255, 0.18);
+  --body-radial-1: rgba(138, 199, 255, 0.22);
+  --body-radial-2: rgba(255, 179, 106, 0.12);
+  --body-linear-start: #f8f5ef;
+  --body-linear-mid: #efe9e2;
+  --body-linear-end: #e8e2da;
+  --player-panel: color-mix(in srgb, var(--card) 86%, rgba(225, 219, 208, 0.88));
+  --player-panel-strong: color-mix(in srgb, var(--card) 92%, rgba(221, 214, 203, 0.94));
+  --player-line: rgba(20, 21, 27, 0.14);
+  --player-foreground: #17181f;
+  --player-muted: rgba(23, 24, 31, 0.78);
+  --player-soft: rgba(23, 24, 31, 0.52);
+  --player-faint: rgba(23, 24, 31, 0.16);
+  --player-top-wash: rgba(245, 242, 236, 0.78);
+  --player-bottom-wash: rgba(245, 242, 236, 0.9);
+  --player-scene-veil: rgba(245, 242, 236, 0.58);
+  --player-scene-side: rgba(245, 242, 236, 0.38);
+  --player-cover-opacity: 0.62;
+}
+
+:root.dark {
+  --background: #09090b;
+  --foreground: #f5f7fb;
+  --card: rgba(17, 17, 22, 0.86);
+  --card-foreground: #f8f8fc;
+  --popover: rgba(22, 22, 28, 0.96);
+  --popover-foreground: #fafaff;
+  --primary: #a78bfa;
+  --primary-foreground: #130f1f;
+  --destructive: #ef6b73;
+  --destructive-foreground: #fff7f7;
+  --secondary: rgba(255, 255, 255, 0.08);
+  --secondary-foreground: #f3f0ff;
+  --muted: rgba(255, 255, 255, 0.06);
+  --muted-foreground: rgba(226, 229, 239, 0.62);
+  --accent: rgba(167, 139, 250, 0.18);
+  --accent-foreground: #f8f4ff;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.08);
+  --ring: rgba(167, 139, 250, 0.65);
+  --sidebar: rgba(12, 12, 17, 0.94);
+  --sidebar-foreground: #f2f3f8;
+  --sidebar-accent: rgba(167, 139, 250, 0.14);
+  --sidebar-accent-foreground: #f7f3ff;
+  --sidebar-border: rgba(167, 139, 250, 0.16);
+  --body-radial-1: rgba(133, 101, 255, 0.16);
+  --body-radial-2: rgba(100, 208, 255, 0.12);
+  --body-linear-start: #101014;
+  --body-linear-mid: #09090b;
+  --body-linear-end: #060607;
+  --player-panel: color-mix(in srgb, var(--card) 92%, rgba(9, 9, 11, 0.08));
+  --player-panel-strong: color-mix(in srgb, var(--card) 97%, rgba(9, 9, 11, 0.12));
+  --player-line: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --player-foreground: #f8fafc;
+  --player-muted: rgba(241, 245, 249, 0.7);
+  --player-soft: rgba(241, 245, 249, 0.42);
+  --player-faint: rgba(241, 245, 249, 0.22);
+  --player-top-wash: color-mix(in srgb, var(--background) 18%, transparent);
+  --player-bottom-wash: color-mix(in srgb, var(--background) 80%, transparent);
+  --player-scene-veil: rgba(8, 9, 16, 0.2);
+  --player-scene-side: rgba(8, 9, 16, 0.08);
+  --player-cover-opacity: 0.95;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    margin: 0;
+    font-family: var(--font-sans);
+    background-image:
+      radial-gradient(circle at top, var(--body-radial-1), transparent 28%),
+      radial-gradient(circle at 80% 12%, var(--body-radial-2), transparent 20%),
+      linear-gradient(180deg, var(--body-linear-start) 0%, var(--body-linear-mid) 42%, var(--body-linear-end) 100%);
+    overflow: hidden;
+    transition:
+      background-color 180ms ease,
+      color 180ms ease,
+      background-image 220ms ease;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  ::selection {
+    background: rgba(167, 139, 250, 0.35);
+    color: #fff;
+  }
+}
+
+@utility window-drag {
+  app-region: drag;
+}
+
+@utility window-no-drag {
+  app-region: no-drag;
+}
+
+@utility window-safe-top {
+  padding-top: calc(16px + var(--titlebar-area-height));
+}
+
+@utility window-safe-top-sm {
+  padding-top: calc(8px + var(--titlebar-area-height));
+}
+
+.react-calendar-heatmap.aural-heatmap {
+  width: 100%;
+}
+
+.react-calendar-heatmap.aural-heatmap svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.react-calendar-heatmap.aural-heatmap text {
+  fill: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.react-calendar-heatmap.aural-heatmap .react-calendar-heatmap-weekday-label {
+  dominant-baseline: middle;
+}
+
+.react-calendar-heatmap.aural-heatmap rect {
+  shape-rendering: geometricPrecision;
+}
+
+.react-calendar-heatmap.aural-heatmap rect:hover {
+  transform: translateY(-1px);
+}
