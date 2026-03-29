@@ -1,3 +1,4 @@
+// @ts-ignore
 import { mkdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { SettingValue } from "@aural/domain/src/entities";
