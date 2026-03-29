@@ -19,6 +19,7 @@ import {
 } from "@aural/player";
 import { bridge } from "@renderer/lib/bridge";
 import { toFileUrl } from "@renderer/lib/fileUrl";
+import { SpectrumEngine, type SpectrumFrame } from "@renderer/lib/spectrumEngine";
 
 type DeckId = "a" | "b";
 type AudioDeck = {
@@ -53,6 +54,7 @@ const PLAYER_SESSION_KEY = "aural.player.session.v1";
 type DomainTrackId = Track["id"];
 type ShuffleStrategy = "true-random" | "anti-repeat";
 type FadeMode = "fade" | "crossfade";
+type SpectrumListener = (frame: SpectrumFrame) => void;
 type PersistedPlayerSession = {
   queue: QueueState;
   tracks: Track[];
@@ -180,6 +182,9 @@ const applyOutputDevice = async (deviceId: string) => {
 let audioContext: AudioContext | null = null;
 let deckMixNode: GainNode | null = null;
 let masterGainNode: GainNode | null = null;
+let spectrumAnalyserNode: AnalyserNode | null = null;
+let spectrumDataBuffer: Uint8Array<ArrayBuffer> | null = null;
+let spectrumEngine: SpectrumEngine | null = null;
 let stereoPannerNode: StereoPannerNode | null = null;
 let monoSplitterNode: ChannelSplitterNode | null = null;
 let monoMergeNode: ChannelMergerNode | null = null;
@@ -190,6 +195,52 @@ let monoRightToRightGainNode: GainNode | null = null;
 let currentChannelMode: "stereo" | "mono" = "stereo";
 let trackSwitchInFlight = false;
 let autoAdvanceTrackId: string | null = null;
+let spectrumFrame: SpectrumFrame = {
+  bars: Array.from({ length: 64 }, () => 0),
+  energy: 0,
+  timestamp: Date.now()
+};
+const spectrumListeners = new Set<SpectrumListener>();
+let spectrumFrameRaf: number | null = null;
+
+const emitSpectrumFrame = (frame: SpectrumFrame) => {
+  spectrumFrame = frame;
+  spectrumListeners.forEach((listener) => {
+    listener(frame);
+  });
+};
+
+const stopSpectrumLoop = () => {
+  if (spectrumFrameRaf !== null) {
+    window.cancelAnimationFrame(spectrumFrameRaf);
+    spectrumFrameRaf = null;
+  }
+};
+
+const tickSpectrumFrame = () => {
+  if (!spectrumListeners.size) {
+    stopSpectrumLoop();
+    return;
+  }
+
+  ensureAudioGraph();
+  if (spectrumAnalyserNode && spectrumDataBuffer && spectrumEngine) {
+    spectrumAnalyserNode.getByteFrequencyData(spectrumDataBuffer);
+    const frame = spectrumEngine.update(spectrumDataBuffer, Date.now());
+    emitSpectrumFrame(frame);
+  } else {
+    emitSpectrumFrame(spectrumEngine?.getFrame(Date.now()) ?? spectrumFrame);
+  }
+
+  spectrumFrameRaf = window.requestAnimationFrame(tickSpectrumFrame);
+};
+
+const ensureSpectrumLoop = () => {
+  if (!spectrumListeners.size || spectrumFrameRaf !== null) {
+    return;
+  }
+  spectrumFrameRaf = window.requestAnimationFrame(tickSpectrumFrame);
+};
 
 const ensureAudioGraph = () => {
   if (typeof window === "undefined" || typeof window.AudioContext === "undefined") {
@@ -201,11 +252,28 @@ const ensureAudioGraph = () => {
   }
 
   if (deckMixNode && masterGainNode && Object.values(decks).every((deck) => deck.sourceNode && deck.gainNode)) {
+    if (!spectrumAnalyserNode && audioContext) {
+      spectrumAnalyserNode = audioContext.createAnalyser();
+      spectrumAnalyserNode.fftSize = 2048;
+      spectrumAnalyserNode.smoothingTimeConstant = 0.84;
+      spectrumAnalyserNode.minDecibels = -92;
+      spectrumAnalyserNode.maxDecibels = -12;
+      spectrumDataBuffer = new Uint8Array<ArrayBuffer>(new ArrayBuffer(spectrumAnalyserNode.frequencyBinCount));
+      spectrumEngine = new SpectrumEngine({ barCount: 64 });
+      masterGainNode.connect(spectrumAnalyserNode);
+    }
     return;
   }
 
   deckMixNode = audioContext.createGain();
   masterGainNode = audioContext.createGain();
+  spectrumAnalyserNode = audioContext.createAnalyser();
+  spectrumAnalyserNode.fftSize = 2048;
+  spectrumAnalyserNode.smoothingTimeConstant = 0.84;
+  spectrumAnalyserNode.minDecibels = -92;
+  spectrumAnalyserNode.maxDecibels = -12;
+  spectrumDataBuffer = new Uint8Array<ArrayBuffer>(new ArrayBuffer(spectrumAnalyserNode.frequencyBinCount));
+  spectrumEngine = new SpectrumEngine({ barCount: 64 });
   monoSplitterNode = audioContext.createChannelSplitter(2);
   monoMergeNode = audioContext.createChannelMerger(2);
   monoLeftToLeftGainNode = audioContext.createGain();
@@ -245,6 +313,7 @@ const ensureAudioGraph = () => {
     stereoPannerNode.connect(masterGainNode);
   }
   masterGainNode.connect(audioContext.destination);
+  masterGainNode.connect(spectrumAnalyserNode);
   currentChannelMode = "stereo";
   deckMixNode.connect(stereoPannerNode ?? masterGainNode);
 };
@@ -1511,3 +1580,20 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     get().persistSession();
   }
 }));
+
+export type PlayerSpectrumFrame = SpectrumFrame;
+
+export const getPlayerSpectrumFrame = (): PlayerSpectrumFrame => spectrumFrame;
+
+export const subscribePlayerSpectrum = (listener: SpectrumListener) => {
+  spectrumListeners.add(listener);
+  listener(spectrumFrame);
+  ensureSpectrumLoop();
+
+  return () => {
+    spectrumListeners.delete(listener);
+    if (!spectrumListeners.size) {
+      stopSpectrumLoop();
+    }
+  };
+};
