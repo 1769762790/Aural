@@ -21,6 +21,7 @@ import { extractCoverTheme, getFallbackCoverTheme } from "@renderer/lib/coverThe
 import { toFileUrl } from "@renderer/lib/fileUrl";
 import { usePreferencesStore } from "@renderer/stores/preferencesStore";
 import { usePlayerStore } from "@renderer/stores/playerStore";
+import { log } from "console";
 
 const buildQualityBadges = (format: string, bitrate: number | null, sampleRate: number | null) => {
   const badges: string[] = [];
@@ -95,6 +96,7 @@ export const PlayerScene = ({ onClose, className }: PlayerSceneProps) => {
     const end = Math.min(lyrics.lines.length, timedLyricAnchorIndex + 5);
     return lyrics.lines.slice(start, end);
   }, [hasStaticEmbeddedLyrics, lyrics?.lines, timedLyricAnchorIndex]);
+  
 
   const coverUrl = currentTrack?.coverPath ? toFileUrl(currentTrack.coverPath) : null;
   const coverBackground = currentTrack?.coverPath
@@ -216,9 +218,9 @@ export const PlayerScene = ({ onClose, className }: PlayerSceneProps) => {
         </Button>
       </div>
 
-      <div className="relative mx-auto flex h-full min-h-full w-full max-w-[1920px] flex-col px-8 pb-11 pt-5 lg:px-12 lg:pb-14 lg:pt-6 2xl:px-16">
+      <div className="relative mx-auto flex h-full min-h-full w-full max-w-[1920px] flex-col px-8 pb-[190px] pt-5 lg:px-12 lg:pb-[190px] lg:pt-6 2xl:px-16">
         <div className="grid flex-1 items-start gap-10 pt-[calc(var(--titlebar-area-height)+34px)] md:grid-cols-[minmax(320px,460px)_minmax(0,1fr)] md:gap-14 xl:grid-cols-[minmax(360px,500px)_minmax(0,1fr)] xl:gap-20 2xl:gap-24">
-          <section className="h-full w-full max-w-[clamp(320px,28vw,460px)] flex flex-col items-start justify-center md:justify-self-start">
+          <section className="h-full w-full max-w-[clamp(320px,28vw,460px)] flex flex-col items-start justify-center md:justify-self-end">
             <div className="flex w-full flex-col space-y-7">
               <div
                 className="mb-10 aspect-square  md:w-[250px] lg:w-[300px] xl:w-[500px] max-w-full shrink-0 rounded-[18px] bg-cover bg-center shadow-[0_26px_60px_rgba(0,0,0,0.38)]"

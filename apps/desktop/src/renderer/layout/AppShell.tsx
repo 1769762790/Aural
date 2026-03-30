@@ -171,7 +171,6 @@ export const AppShell = () => {
         <div ref={scrollContainerRef} data-shell-scroll-root="true" className="min-h-0 flex-1 overflow-auto px-5 pb-32 pt-6">
           <Outlet />
         </div>
-
         <footer
           className="pointer-events-auto absolute bottom-3 left-5 z-30 flex items-center justify-between gap-5 rounded-[26px] bg-card/72 px-6 py-3 shadow-[0_18px_48px_rgba(0,0,0,0.12)] backdrop-blur-lg supports-[backdrop-filter]:bg-card/58 dark:border-border/90 dark:bg-card/52 dark:shadow-[0_22px_56px_rgba(0,0,0,0.28)]"
           style={{ right: `calc(1.25rem + ${scrollbarWidth}px)` }}

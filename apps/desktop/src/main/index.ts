@@ -35,6 +35,7 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 let appServices: ReturnType<typeof createAppServices> | null = null;
+let didShutdown = false;
 const preloadPath = path.join(__dirname, "index.mjs");
 const rendererIndexPath = path.join(__dirname, "../dist/index.html");
 
@@ -179,12 +180,26 @@ app.whenReady().then(() => {
 });
 
 app.on("before-quit", () => {
-  appServices?.beforeQuit();
+  if (didShutdown) {
+    return;
+  }
+
+  didShutdown = true;
+
+  try {
+    appServices?.beforeQuit();
+  } finally {
+    // Ensure settings reads in beforeQuit happen while the DB is still open.
+    try {
+      appServices?.database.close();
+    } catch {
+      // ignore already-closed DB
+    }
+  }
 });
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
-    appServices?.database.close();
     app.quit();
   }
 });
