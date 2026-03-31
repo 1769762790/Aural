@@ -132,6 +132,11 @@ export interface LyricsResponse {
   lines: Array<{
     at: number;
     text: string;
+    segments?: Array<{
+      text: string;
+      startMs: number;
+      endMs: number;
+    }>;
   }>;
 }
 

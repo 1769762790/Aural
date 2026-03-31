@@ -4,6 +4,13 @@ export interface LyricLine {
   index: number;
   timeMs: number;
   text: string;
+  segments?: LyricSegment[];
+}
+
+export interface LyricSegment {
+  text: string;
+  startMs: number;
+  endMs: number;
 }
 
 export interface LyricMetadata {
@@ -28,6 +35,7 @@ export interface LyricsSnapshot {
 
 const tagPattern = /^\[(ar|ti|al|by|offset):([^\]]*)\]$/i;
 const timestampPattern = /\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]/g;
+const segmentTimestampPattern = /<(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?>/g;
 
 const parseTimestamp = (minutes: string, seconds: string, fraction: string | undefined) => {
   const minuteValue = Number(minutes);
@@ -90,22 +98,71 @@ export const parseLrc = (content: string): ParsedLrc => {
         return;
       }
 
-      const timestamps = [...line.matchAll(timestampPattern)];
-      if (!timestamps.length) {
+      const timestamps = [...rawLine.matchAll(timestampPattern)];
+      const lineBody = rawLine.replace(timestampPattern, "");
+      const segmentMatches = [...lineBody.matchAll(segmentTimestampPattern)];
+      if (!timestamps.length && !segmentMatches.length) {
         return;
       }
 
-      const text = line.replace(timestampPattern, "").trim();
-      timestamps.forEach((match, timestampIndex) => {
-        const timeMs = parseTimestamp(match[1], match[2], match[3]);
-        if (timeMs === null) {
-          return;
-        }
+      const parsedSegments =
+        segmentMatches.length > 0
+          ? segmentMatches
+              .map((match, index) => {
+                const startMs = parseTimestamp(match[1], match[2], match[3]);
+                if (startMs === null) {
+                  return null;
+                }
 
+                const segmentStart = (match.index ?? 0) + match[0].length;
+                const nextMarkerIndex =
+                  index < segmentMatches.length - 1
+                    ? (segmentMatches[index + 1]?.index ?? lineBody.length)
+                    : lineBody.length;
+                const text = lineBody.slice(segmentStart, nextMarkerIndex);
+
+                return {
+                  startMs,
+                  text
+                };
+              })
+              .filter(
+                (
+                  segment
+                ): segment is {
+                  startMs: number;
+                  text: string;
+                } => Boolean(segment && segment.text.length)
+              )
+          : [];
+
+      const plainText =
+        parsedSegments.length > 0
+          ? parsedSegments.map((segment) => segment.text).join("").trim()
+          : lineBody.replace(segmentTimestampPattern, "").trim();
+
+      const lineTimes =
+        timestamps.length > 0
+          ? timestamps
+              .map((match) => parseTimestamp(match[1], match[2], match[3]))
+              .filter((timeMs): timeMs is number => timeMs !== null)
+          : parsedSegments.length > 0
+            ? [parsedSegments[0]!.startMs]
+            : [];
+
+      lineTimes.forEach((timeMs, timestampIndex) => {
         lines.push({
           index: lineIndex * 10 + timestampIndex,
           timeMs,
-          text
+          text: plainText,
+          segments:
+            parsedSegments.length > 0
+              ? parsedSegments.map((segment) => ({
+                  text: segment.text,
+                  startMs: segment.startMs,
+                  endMs: segment.startMs
+                }))
+              : undefined
         });
       });
     });
@@ -114,13 +171,43 @@ export const parseLrc = (content: string): ParsedLrc => {
   const adjustedLines = lines
     .map((line) => ({
       ...line,
-      timeMs: Math.max(0, line.timeMs + offsetMs)
+      timeMs: Math.max(0, line.timeMs + offsetMs),
+      segments: line.segments?.map((segment) => ({
+        ...segment,
+        startMs: Math.max(0, segment.startMs + offsetMs),
+        endMs: Math.max(0, segment.endMs + offsetMs)
+      }))
     }))
     .sort((left, right) => left.timeMs - right.timeMs || left.index - right.index);
 
+  const finalizedLines = adjustedLines.map((line, lineIndex) => {
+    if (!line.segments?.length) {
+      return line;
+    }
+
+    const nextLineStart = adjustedLines[lineIndex + 1]?.timeMs ?? null;
+    const finalizedSegments = line.segments.map((segment, segmentIndex) => {
+      const nextSegmentStart = line.segments?.[segmentIndex + 1]?.startMs ?? null;
+      const resolvedEndMs =
+        nextSegmentStart ??
+        nextLineStart ??
+        segment.startMs + 800;
+
+      return {
+        ...segment,
+        endMs: Math.max(segment.startMs + 1, resolvedEndMs)
+      };
+    });
+
+    return {
+      ...line,
+      segments: finalizedSegments
+    };
+  });
+
   return {
     metadata,
-    lines: adjustedLines
+    lines: finalizedLines
   };
 };
 

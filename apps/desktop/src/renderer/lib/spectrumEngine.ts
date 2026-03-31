@@ -1,6 +1,8 @@
 export interface SpectrumFrame {
   bars: number[];
   energy: number;
+  pulse: number;
+  lowBandEnergy?: number;
   timestamp: number;
 }
 
@@ -163,6 +165,8 @@ export class SpectrumEngine {
 
   private previousBars: number[];
   private readonly histogram = new Uint16Array(256);
+  private previousLowBandEnergy = 0;
+  private previousPulse = 0;
 
   constructor(options: Partial<SpectrumEngineOptions> = {}) {
     this.options = {
@@ -173,15 +177,21 @@ export class SpectrumEngine {
   }
 
   getFrame(timestamp = Date.now()): SpectrumFrame {
+    const energy =
+      this.previousBars.reduce((sum, value) => sum + value, 0) / Math.max(this.previousBars.length, 1);
     return {
       bars: [...this.previousBars],
-      energy: this.previousBars.reduce((sum, value) => sum + value, 0) / Math.max(this.previousBars.length, 1),
+      energy,
+      pulse: this.previousPulse,
+      lowBandEnergy: this.previousLowBandEnergy,
       timestamp
     };
   }
 
   reset() {
     this.previousBars = this.previousBars.map(() => 0);
+    this.previousLowBandEnergy = 0;
+    this.previousPulse = 0;
   }
 
   update(frequencyData: Uint8Array<ArrayBufferLike>, timestamp = Date.now()): SpectrumFrame {
@@ -209,11 +219,27 @@ export class SpectrumEngine {
 
     const spatialBars = applySpatialSmoothing(rawTargets, this.options);
     const nextBars = applyTemporalSmoothing(this.previousBars, spatialBars, this.options);
+    const lowBandCount = Math.max(6, Math.round(nextBars.length * 0.22));
+    const lowBandEnergy =
+      nextBars
+        .slice(0, lowBandCount)
+        .reduce((sum, value, index) => sum + value * (1 - index / Math.max(lowBandCount, 1) * 0.35), 0) /
+      Math.max(lowBandCount, 1);
+    const transient = Math.max(0, lowBandEnergy - this.previousLowBandEnergy);
+    const pulseTarget = clamp01(lowBandEnergy * 0.72 + transient * 1.65);
+    const pulseDelta = pulseTarget - this.previousPulse;
+    const pulseSmoothing = pulseDelta >= 0 ? 0.42 : 0.12;
+    const nextPulse = clamp01(this.previousPulse + pulseDelta * pulseSmoothing);
 
     this.previousBars = nextBars;
+    this.previousLowBandEnergy = lowBandEnergy;
+    this.previousPulse = nextPulse;
+    const energy = nextBars.reduce((sum, value) => sum + value, 0) / Math.max(nextBars.length, 1);
     return {
       bars: [...nextBars],
-      energy: nextBars.reduce((sum, value) => sum + value, 0) / Math.max(nextBars.length, 1),
+      energy,
+      pulse: nextPulse,
+      lowBandEnergy,
       timestamp
     };
   }

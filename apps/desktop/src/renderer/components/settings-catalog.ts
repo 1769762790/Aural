@@ -31,6 +31,8 @@ export const defaultSettings: Record<SettingKey, SettingValue> = {
   "appearance.accent": "aurora",
   "appearance.motion": true,
   "appearance.coverColor": true,
+  "appearance.dynamicCoverGradient": true,
+  "appearance.playerArtworkBreathing": true,
   "player.volume": 0.8,
   "player.startupAutoplay": false,
   "player.replayGainEnabled": true,
@@ -99,6 +101,18 @@ export const settingsSections: SettingsSectionDefinition[] = [
         key: "appearance.coverColor",
         label: "Cover ambience",
         description: "Allow the player surface to keep richer color and saturation around cover-driven artwork.",
+        kind: "toggle"
+      },
+      {
+        key: "appearance.dynamicCoverGradient",
+        label: "Dynamic cover gradient",
+        description: "Let the main player scene follow cover art with a softer dual-tone gradient background.",
+        kind: "toggle"
+      },
+      {
+        key: "appearance.playerArtworkBreathing",
+        label: "Artwork breathing",
+        description: "Let the main player cover shadow breathe gently while playback is active.",
         kind: "toggle"
       }
     ]

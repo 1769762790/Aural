@@ -540,6 +540,8 @@ export const SettingsPage = () => {
       : "pause";
   const motion = Boolean(getValue("appearance.motion"));
   const coverColor = Boolean(getValue("appearance.coverColor"));
+  const dynamicCoverGradient = getValue("appearance.dynamicCoverGradient") !== false;
+  const playerArtworkBreathing = getValue("appearance.playerArtworkBreathing") !== false;
   const autoScanOnStartup = Boolean(getValue("library.autoScanOnStartup"));
   const scanAllowedFormatsSetting = getValue("library.scanAllowedFormats");
   const scanAllowedFormats = useMemo(() => parseScanAllowedFormats(scanAllowedFormatsSetting), [scanAllowedFormatsSetting]);
@@ -739,10 +741,24 @@ export const SettingsPage = () => {
                     onChange={(v) => setDraftValue("language", v as Draft["language"])}
                     disabled={draft.followSystemLanguage}
                   />
-                  <div className="grid gap-4 xl:grid-cols-2">
-                    <ToggleRow label="Motion" desc="Reduce global transitions and animation." checked={motion} onChange={(v) => setPersistent("appearance.motion", v)} live />
-                    <ToggleRow label="Cover ambience" desc="Allow cover colors to tint the player atmosphere." checked={coverColor} onChange={(v) => setPersistent("appearance.coverColor", v)} live />
-                  </div>
+                    <div className="grid gap-4 xl:grid-cols-2">
+                      <ToggleRow label="Motion" desc="Reduce global transitions and animation." checked={motion} onChange={(v) => setPersistent("appearance.motion", v)} live />
+                      <ToggleRow label="Cover ambience" desc="Allow cover colors to tint the player atmosphere." checked={coverColor} onChange={(v) => setPersistent("appearance.coverColor", v)} live />
+                      <ToggleRow
+                        label="Dynamic cover gradient"
+                        desc="Follow cover art with a dual-tone gradient inside the main player scene."
+                        checked={dynamicCoverGradient}
+                        onChange={(v) => setPersistent("appearance.dynamicCoverGradient", v)}
+                        live
+                      />
+                      <ToggleRow
+                        label="Artwork breathing"
+                        desc="Let the main player cover shadow breathe gently while playback is active."
+                        checked={playerArtworkBreathing}
+                        onChange={(v) => setPersistent("appearance.playerArtworkBreathing", v)}
+                        live
+                      />
+                    </div>
                 </Card>
               </div>
             </section>

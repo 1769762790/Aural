@@ -197,7 +197,12 @@ export const createAppServices = (userDataPath: string): AppServices => {
                 source: snapshot.source,
                 lines: snapshot.lines.map((line) => ({
                   at: line.timeMs,
-                  text: line.text
+                  text: line.text,
+                  segments: line.segments?.map((segment) => ({
+                    text: segment.text,
+                    startMs: segment.startMs,
+                    endMs: segment.endMs
+                  }))
                 }))
               };
             }
@@ -209,7 +214,12 @@ export const createAppServices = (userDataPath: string): AppServices => {
                 source: snapshot.source,
                 lines: snapshot.lines.map((line) => ({
                   at: line.timeMs,
-                  text: line.text
+                  text: line.text,
+                  segments: line.segments?.map((segment) => ({
+                    text: segment.text,
+                    startMs: segment.startMs,
+                    endMs: segment.endMs
+                  }))
                 }))
               };
             }

@@ -198,6 +198,8 @@ let autoAdvanceTrackId: string | null = null;
 let spectrumFrame: SpectrumFrame = {
   bars: Array.from({ length: 64 }, () => 0),
   energy: 0,
+  pulse: 0,
+  lowBandEnergy: 0,
   timestamp: Date.now()
 };
 const spectrumListeners = new Set<SpectrumListener>();

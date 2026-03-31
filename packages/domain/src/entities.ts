@@ -10,6 +10,8 @@ export type SettingKey =
   | "appearance.accent"
   | "appearance.motion"
   | "appearance.coverColor"
+  | "appearance.dynamicCoverGradient"
+  | "appearance.playerArtworkBreathing"
   | "player.volume"
   | "player.startupAutoplay"
   | "player.replayGainEnabled"
