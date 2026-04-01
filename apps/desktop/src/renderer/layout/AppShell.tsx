@@ -187,7 +187,7 @@ export const AppShell = () => {
             onClick={openPlayerOverlay}
             aria-label="Open now playing drawer"
           />
-          <div className="min-w-0">
+          <div className="w-[200px] lg:w-[200px] 2xl:w-[280px]">
             <p className="truncate text-sm font-semibold text-foreground">{currentTrack?.title ?? "No track selected"}</p>
             <p className="truncate text-xs text-muted-foreground">
               {currentTrack ? `${currentTrack.artist} / ${currentTrack.album}` : "Import a folder to start curating playback."}

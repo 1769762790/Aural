@@ -60,7 +60,7 @@ export const PlayerSceneDock = ({
             </div>
 
             <div className="grid grid-cols-[220px_minmax(0,1fr)_180px] items-center gap-5">
-              <div className="flex w-[220px] min-w-[220px] items-center gap-3 overflow-hidden">
+              <div className="flex w-[220px] max-w-[220px] items-center gap-3 overflow-hidden">
                 <div
                   className="size-11 rounded-[12px] border border-[color:var(--player-line)] bg-cover bg-center"
                   style={coverBackground}

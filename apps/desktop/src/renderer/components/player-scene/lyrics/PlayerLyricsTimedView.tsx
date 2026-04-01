@@ -3,7 +3,7 @@ import { PlayerLyricsKaraokeLine } from "./PlayerLyricsKaraokeLine";
 
 export const PlayerLyricsTimedView = ({ lines, anchorIndex }: PlayerLyricsTimedViewProps) => {
   return (
-    <div className="relative min-h-[520px] overflow-hidden pr-4 text-left lg:pl-4 xl:pl-8 2xl:pl-12">
+    <div className="relative min-h-[520px] pr-4 text-left lg:pl-4 xl:pl-8 2xl:pl-12">
       {lines.map((line) => {
         const relativeIndex = line.absoluteIndex - anchorIndex;
         const distance = Math.abs(relativeIndex);
@@ -25,9 +25,9 @@ export const PlayerLyricsTimedView = ({ lines, anchorIndex }: PlayerLyricsTimedV
         const scale =
           isActive ? 1 : distance === 1 ? 0.82 : distance === 2 ? 0.72 : 0.62;
         const activeClassName =
-          "block text-[54px] font-black leading-[0.95] tracking-[0.01em] text-[var(--player-foreground)] line-height-[1.02] xl:text-[48px] 2xl:text-[55px]";
+          "block text-[38px] font-black leading-[1.3] tracking-[0.01em] text-[var(--player-foreground)] xl:text-[42px] 2xl:text-[46px] text-shadow-lg";
         const inactiveClassName =
-          "block text-[34px] font-semibold leading-[1.03] tracking-[0.01em] text-[var(--player-soft)] line-height-[1.02] xl:text-[38px] 2xl:text-[42px]";
+          "block text-[30px] font-semibold leading-[1.3] tracking-[0.01em] text-[var(--player-soft)] xl:text-[34px] 2xl:text-[38px]";
 
         return (
           <p

@@ -22,6 +22,11 @@ const alias = {
 };
 
 export default defineConfig({
+  root: '.',
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true
+  },
   resolve: {
     alias
   },
@@ -31,8 +36,12 @@ export default defineConfig({
     electron({
       main: {
         entry: "src/main/index.ts",
+        onstart(options) {
+          options.startup()
+        },
         vite: {
           build: {
+            outDir: 'dist-electron',
             rollupOptions: {
               external: ["@ffmpeg-installer/ffmpeg", "fluent-ffmpeg"]
             }
