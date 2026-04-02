@@ -20,6 +20,7 @@ import {
 import { bridge } from "@renderer/lib/bridge";
 import { toFileUrl } from "@renderer/lib/fileUrl";
 import { SpectrumEngine, type SpectrumFrame } from "@renderer/lib/spectrumEngine";
+import { usePreferencesStore } from "@renderer/stores/preferencesStore";
 
 type DeckId = "a" | "b";
 type AudioDeck = {
@@ -177,6 +178,16 @@ const applyOutputDevice = async (deviceId: string) => {
   );
 
   return results.some(Boolean);
+};
+const persistPlayerVolumePreference = (volume: number) => {
+  void bridge.settings
+    .setSetting("player.volume", volume)
+    .then(() => {
+      usePreferencesStore.getState().update("player.volume", volume);
+    })
+    .catch(() => {
+      // Ignore persistence failures and keep playback responsive.
+    });
 };
 
 let audioContext: AudioContext | null = null;
@@ -943,7 +954,6 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     if (nextReplayGainEnabled !== null) {
       void store.refreshReplayGain();
     }
-    store.persistSession();
   },
   playTracks: async (tracks, startTrackId, sourceType = "library", sourceId = "library") => {
     const shuffleSeed = get().playback.playbackMode === "shuffle" ? Math.floor(Math.random() * 100_000) : null;
@@ -1212,17 +1222,19 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
   },
   setVolumeLevel: (volume) => {
     const state = get();
+    const nextMuted = volume <= 0;
     setOutputGainImmediate(
       resolveOutputVolume(volume, state.runtimeDuckActive, state.runtimeDuckFactor, state.replayGainEnabled, state.replayGainMultiplier)
     );
     Object.values(decks).forEach((deck) => {
-      deck.element.muted = state.isMuted;
+      deck.element.muted = nextMuted;
     });
     set((state) => ({
       playback: setVolume(state.playback, volume),
-      isMuted: volume <= 0,
+      isMuted: nextMuted,
       lastVolumeBeforeMute: volume > 0 ? volume : state.lastVolumeBeforeMute
     }));
+    persistPlayerVolumePreference(volume);
     get().persistSession();
   },
   setPlaybackRateLevel: (rate) => {
@@ -1266,6 +1278,10 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
         lastVolumeBeforeMute: restoredVolume
       };
     });
+    const latestState = get();
+    if (!latestState.isMuted) {
+      persistPlayerVolumePreference(latestState.playback.volume);
+    }
     get().persistSession();
   },
   setRuntimeDuck: (active) => {

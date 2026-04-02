@@ -83,6 +83,18 @@ export const AppShell = () => {
     };
   }, [location.pathname, location.search, location.hash]);
 
+  useEffect(() => {
+    if (location.pathname !== "/player" || currentTrack) {
+      return;
+    }
+
+    const fallbackRoute =
+      lastNonPlayerRouteRef.current && lastNonPlayerRouteRef.current !== "/player"
+        ? lastNonPlayerRouteRef.current
+        : "/songs";
+    void navigate(fallbackRoute, { replace: true });
+  }, [currentTrack, location.pathname, navigate]);
+
   const coverStyle = currentTrack?.coverPath
     ? { backgroundImage: `url("${toFileUrl(currentTrack.coverPath)}")` }
     : undefined;
@@ -93,7 +105,7 @@ export const AppShell = () => {
   const isDark = resolvedTheme === "dark";
 
   const openPlayerOverlay = () => {
-    if (location.pathname === "/player") {
+    if (location.pathname === "/player" || !currentTrack) {
       return;
     }
 
@@ -178,13 +190,17 @@ export const AppShell = () => {
         <div className="flex min-w-0 items-center gap-3">
           <button
             type="button"
-            className="window-no-drag size-14 shrink-0 overflow-hidden rounded-[18px] border border-border bg-cover bg-center shadow-[0_8px_20px_rgba(0,0,0,0.22)] transition-transform hover:-translate-y-0.5"
+            className={cn(
+              "window-no-drag size-14 shrink-0 overflow-hidden rounded-[18px] border border-border bg-cover bg-center shadow-[0_8px_20px_rgba(0,0,0,0.22)] transition-transform",
+              currentTrack ? "hover:-translate-y-0.5" : "cursor-not-allowed opacity-60"
+            )}
             style={
               coverStyle ?? {
                 backgroundImage: "linear-gradient(135deg, rgba(117,73,255,0.95), rgba(55,206,255,0.82))"
               }
             }
             onClick={openPlayerOverlay}
+            disabled={!currentTrack}
             aria-label="Open now playing drawer"
           />
           <div className="w-[200px] lg:w-[200px] 2xl:w-[280px]">

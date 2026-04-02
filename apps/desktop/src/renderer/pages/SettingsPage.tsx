@@ -187,6 +187,9 @@ const isPathWithinFolder = (filePath: string, folderPath: string) => {
 };
 const DEFAULT_SCAN_FORMATS = ["mp3", "flac", "wav", "ape", "m4a", "aac", "ogg", "wma"];
 const normalizeFormat = (value: string) => value.trim().toLowerCase().replace(/^\./, "");
+type MediaDevicesWithOutputSelection = MediaDevices & {
+  selectAudioOutput?: (options?: { deviceId?: string }) => Promise<MediaDeviceInfo>;
+};
 const parseScanAllowedFormats = (value: SettingValue) => {
   if (Array.isArray(value)) {
     const formats = value.map((item) => normalizeFormat(String(item))).filter(Boolean);
@@ -416,6 +419,32 @@ export const SettingsPage = () => {
 
   const setDraftValue = <K extends keyof Draft>(key: K, value: Draft[K]) => setDraft((current) => ({ ...current, [key]: value }));
   const setPersistent = (key: SettingKey, value: SettingValue) => void updateSetting(key, value);
+  const handleOutputDeviceChange = async (nextValue: string) => {
+    if (!nextValue) {
+      return;
+    }
+
+    let resolvedValue = nextValue;
+    let resolvedLabel = systemOutputDevices.find((option) => option.value === nextValue)?.label ?? nextValue;
+    const mediaDevices = navigator.mediaDevices as MediaDevicesWithOutputSelection | undefined;
+
+    if (nextValue !== "default" && typeof mediaDevices?.selectAudioOutput === "function") {
+      try {
+        const selected = await mediaDevices.selectAudioOutput({ deviceId: nextValue });
+        resolvedValue = selected.deviceId || nextValue;
+        resolvedLabel = selected.label?.trim() || resolvedLabel;
+        setSystemOutputDevices((current) => {
+          const nextOptions = current.filter((option) => option.value !== resolvedValue);
+          return [...nextOptions, { label: resolvedLabel, value: resolvedValue }];
+        });
+      } catch {
+        toast.error("Output device selection was cancelled or blocked by the runtime.");
+        return;
+      }
+    }
+
+    await updateSetting("player.outputDeviceId", resolvedValue);
+  };
   const scrollTo = (id: TabId) => {
     const root = getScrollRoot();
     if (!root) {
@@ -1175,7 +1204,9 @@ export const SettingsPage = () => {
                         }
                         value={outputDeviceId}
                         options={outputDeviceOptions}
-                        onChange={(v) => setPersistent("player.outputDeviceId", v)}
+                        onChange={(v) => {
+                          void handleOutputDeviceChange(v);
+                        }}
                         disabled={!outputDeviceSupported}
                       />
                       <SelectRow

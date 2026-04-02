@@ -1,6 +1,6 @@
-import { app, BrowserWindow, protocol } from "electron";
+import { app, BrowserWindow, Menu, Tray, dialog, nativeImage, protocol } from "electron";
 import { createReadStream } from "node:fs";
-import { stat } from "node:fs/promises";
+import { access, stat } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
@@ -36,6 +36,10 @@ protocol.registerSchemesAsPrivileged([
 
 let appServices: ReturnType<typeof createAppServices> | null = null;
 let didShutdown = false;
+let mainWindow: BrowserWindow | null = null;
+let tray: Tray | null = null;
+let isQuitting = false;
+let closePromptOpen = false;
 const preloadPath = path.join(__dirname, "index.mjs");
 const rendererIndexPath = path.join(__dirname, "../dist/index.html");
 
@@ -132,6 +136,92 @@ const registerMediaProtocol = () => {
   });
 };
 
+const resolveTrayIcon = async () => {
+  const candidates = [
+    path.join(__dirname, "../build/icon.ico"),
+    path.join(process.resourcesPath, "icon.ico"),
+    path.join(process.resourcesPath, "build", "icon.ico")
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      await access(candidate);
+      const image = nativeImage.createFromPath(candidate);
+      if (!image.isEmpty()) {
+        return image;
+      }
+    } catch {
+      // Keep checking the next candidate.
+    }
+  }
+
+  try {
+    return await app.getFileIcon(process.execPath, { size: "normal" });
+  } catch {
+    return nativeImage.createEmpty();
+  }
+};
+
+const showMainWindow = async () => {
+  if (!mainWindow) {
+    await createWindow();
+    return;
+  }
+
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+
+  mainWindow.show();
+  mainWindow.focus();
+};
+
+const hideMainWindowToTray = () => {
+  if (!mainWindow) {
+    return;
+  }
+
+  mainWindow.hide();
+};
+
+const quitApplication = () => {
+  isQuitting = true;
+  app.quit();
+};
+
+const ensureTray = async () => {
+  if (tray) {
+    return tray;
+  }
+
+  tray = new Tray(await resolveTrayIcon());
+  tray.setToolTip("Aural");
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      {
+        label: "Open Aural",
+        click: () => {
+          void showMainWindow();
+        }
+      },
+      {
+        type: "separator"
+      },
+      {
+        label: "Exit",
+        click: () => {
+          quitApplication();
+        }
+      }
+    ])
+  );
+  tray.on("click", () => {
+    void showMainWindow();
+  });
+
+  return tray;
+};
+
 const createWindow = async () => {
   const window = new BrowserWindow({
     width: 1540,
@@ -156,14 +246,61 @@ const createWindow = async () => {
       nodeIntegration: false
     }
   });
+  mainWindow = window;
+
+  window.on("close", (event) => {
+    if (isQuitting) {
+      return;
+    }
+
+    if (closePromptOpen) {
+      event.preventDefault();
+      return;
+    }
+
+    event.preventDefault();
+    closePromptOpen = true;
+
+    void (async () => {
+      try {
+        await ensureTray();
+        const { response } = await dialog.showMessageBox(window, {
+          type: "question",
+          title: "Close Aural",
+          message: "How should Aural handle this close action?",
+          detail: "Choose background running to hide the app to the system tray, or exit to fully close it.",
+          buttons: ["Run in background", "Exit app"],
+          defaultId: 0,
+          cancelId: 0,
+          noLink: true
+        });
+
+        if (response === 1) {
+          quitApplication();
+          return;
+        }
+
+        hideMainWindowToTray();
+      } finally {
+        closePromptOpen = false;
+      }
+    })();
+  });
+
+  window.on("closed", () => {
+    if (mainWindow === window) {
+      mainWindow = null;
+    }
+  });
 
   if (process.env.VITE_DEV_SERVER_URL) {
     await window.loadURL(process.env.VITE_DEV_SERVER_URL);
     window.webContents.openDevTools({ mode: "detach" });
-    return;
+    return window;
   }
 
   await window.loadFile(rendererIndexPath);
+  return window;
 };
 
 app.whenReady().then(() => {
@@ -173,13 +310,17 @@ app.whenReady().then(() => {
   void createWindow();
 
   app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
+    if (!mainWindow) {
       void createWindow();
+      return;
     }
+
+    void showMainWindow();
   });
 });
 
 app.on("before-quit", () => {
+  isQuitting = true;
   if (didShutdown) {
     return;
   }
