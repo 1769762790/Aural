@@ -8,6 +8,7 @@ export type SortDirection = "asc" | "desc";
 export type SettingKey =
   | "appearance.mode"
   | "appearance.accent"
+  | "appearance.customAccents"
   | "appearance.motion"
   | "appearance.coverColor"
   | "appearance.dynamicCoverGradient"
@@ -24,6 +25,7 @@ export type SettingKey =
   | "player.fadeEnabled"
   | "player.fadeMode"
   | "player.crossfadeSeconds"
+  | "player.session"
   | "player.resume"
   | "player.otherAppAudioPolicy"
   | "player.headphoneInsertAction"
@@ -39,7 +41,8 @@ export type SettingKey =
   | "library.confirmLocalSourceDeletion"
   | "history.maxItems"
   | "history.clearOnExit"
-  | "library.density";
+  | "library.density"
+  | "settings.centerDraft";
 
 export type SettingValue = string | number | boolean | null;
 

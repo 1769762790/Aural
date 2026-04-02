@@ -29,6 +29,7 @@ export interface SettingsSectionDefinition {
 export const defaultSettings: Record<SettingKey, SettingValue> = {
   "appearance.mode": "system",
   "appearance.accent": "aurora",
+  "appearance.customAccents": null,
   "appearance.motion": true,
   "appearance.coverColor": true,
   "appearance.dynamicCoverGradient": true,
@@ -45,6 +46,7 @@ export const defaultSettings: Record<SettingKey, SettingValue> = {
   "player.fadeEnabled": true,
   "player.fadeMode": "crossfade",
   "player.crossfadeSeconds": 1.5,
+  "player.session": null,
   "player.resume": true,
   "player.otherAppAudioPolicy": "duck",
   "player.headphoneInsertAction": "play",
@@ -60,7 +62,8 @@ export const defaultSettings: Record<SettingKey, SettingValue> = {
   "library.confirmLocalSourceDeletion": true,
   "history.maxItems": 300,
   "history.clearOnExit": false,
-  "library.density": "default"
+  "library.density": "default",
+  "settings.centerDraft": null
 };
 
 export const settingsSections: SettingsSectionDefinition[] = [

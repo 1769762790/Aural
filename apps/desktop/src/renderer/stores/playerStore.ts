@@ -6,7 +6,6 @@ import {
   advancePlaybackCursor,
   createPlaybackState,
   createQueue,
-  resolveNextQueueIndex,
   setDurationSeconds,
   setPlaybackRate,
   setPlaybackMode,
@@ -18,520 +17,45 @@ import {
   type QueueState
 } from "@aural/player";
 import { bridge } from "@renderer/lib/bridge";
-import { toFileUrl } from "@renderer/lib/fileUrl";
-import { SpectrumEngine, type SpectrumFrame } from "@renderer/lib/spectrumEngine";
-import { usePreferencesStore } from "@renderer/stores/preferencesStore";
-
-type DeckId = "a" | "b";
-type AudioDeck = {
-  id: DeckId;
-  element: HTMLAudioElement;
-  sourceNode: MediaElementAudioSourceNode | null;
-  gainNode: GainNode | null;
-  trackId: string | null;
-};
-
-const createAudioDeck = (id: DeckId): AudioDeck => {
-  const element = new Audio();
-  element.preload = "metadata";
-  element.volume = 1;
-  return {
-    id,
-    element,
-    sourceNode: null,
-    gainNode: null,
-    trackId: null
-  };
-};
-
-const decks: Record<DeckId, AudioDeck> = {
-  a: createAudioDeck("a"),
-  b: createAudioDeck("b")
-};
-
-let activeDeckId: DeckId = "a";
-const PLAYER_SESSION_KEY = "aural.player.session.v1";
+import {
+  applyChannelBalance,
+  applyChannelMode,
+  applyOutputDevice,
+  ensureAudioGraph,
+  getActiveAudioElement,
+  getAllDecks,
+  persistPlayerVolumePreference,
+  rampOutputGain,
+  resumeAudioGraph,
+  resolveCrossfadeSeconds,
+  resolveDurationSeconds,
+  resolveElementDurationSeconds,
+  resolveFadeMode,
+  resolveFadeTransitionSeconds,
+  resolveOutputVolume,
+  resolveShuffleStrategy,
+  setActiveDeckId,
+  setOutputGainImmediate,
+  subscribePlayerSpectrum,
+  getPlayerSpectrumFrame,
+  type FadeMode,
+  type ShuffleStrategy,
+  type SpectrumFrame,
+  resetDeck
+} from "@renderer/stores/player/audio-graph";
+import {
+  canAutoAdvanceWithFade,
+  getAutoAdvanceTrackId,
+  isTrackSwitchInFlight,
+  loadTrack,
+  pickTrueRandomNextIndex,
+  resolveAutoAdvanceLeadSeconds,
+  setAutoAdvanceTrackId
+} from "@renderer/stores/player/playback-runtime";
+import { readPersistedSession, writePersistedSession } from "@renderer/stores/player/session";
 
 type DomainTrackId = Track["id"];
-type ShuffleStrategy = "true-random" | "anti-repeat";
-type FadeMode = "fade" | "crossfade";
-type SpectrumListener = (frame: SpectrumFrame) => void;
-type PersistedPlayerSession = {
-  queue: QueueState;
-  tracks: Track[];
-  currentTrackId: string | null;
-  progressSeconds: number;
-  playbackMode: PlaybackState["playbackMode"];
-  shuffleSeed: number | null;
-  shuffleHistory: number[];
-  shuffleFuture: number[];
-};
-
 const toPlayerTrackId = (trackId: DomainTrackId) => trackId as never;
-const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
-const getActiveDeck = () => decks[activeDeckId];
-const getInactiveDeck = () => decks[activeDeckId === "a" ? "b" : "a"];
-const getActiveAudioElement = () => getActiveDeck().element;
-const resolveElementDurationSeconds = (element: HTMLAudioElement, fallbackSeconds = 0) =>
-  Number.isFinite(element.duration) && element.duration > 0 ? element.duration : Math.max(0, fallbackSeconds);
-const resolveDurationSeconds = (fallbackSeconds = 0) =>
-  resolveElementDurationSeconds(getActiveAudioElement(), fallbackSeconds);
-const resolveReplayGainMultiplier = (enabled: boolean, multiplier: number) =>
-  enabled ? clamp(Number.isFinite(multiplier) ? multiplier : 1, 0.05, 8) : 1;
-const resolveOutputVolume = (
-  volume: number,
-  duckActive: boolean,
-  duckFactor: number,
-  replayGainEnabled = false,
-  replayGainMultiplier = 1
-) => Math.max(0, Math.min(1, volume * (duckActive ? duckFactor : 1) * resolveReplayGainMultiplier(replayGainEnabled, replayGainMultiplier)));
-const resolveCrossfadeSeconds = (value: number) => clamp(Number.isFinite(value) ? value : 0, 0, 5);
-const resolveFadeTransitionSeconds = (enabled: boolean, value: number) => (enabled ? resolveCrossfadeSeconds(value) : 0);
-const resolveFadeMode = (value: unknown): FadeMode => (value === "fade" ? "fade" : "crossfade");
-const resolveBalancePan = (value: number) => clamp((Number.isFinite(value) ? value : 0) / 100, -1, 1);
-const resolveShuffleStrategy = (value: unknown): ShuffleStrategy =>
-  value === "true-random" ? "true-random" : "anti-repeat";
-const randomIndex = (length: number) => Math.floor(Math.random() * length);
-const readPersistedSession = (): PersistedPlayerSession | null => {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    const raw = window.localStorage.getItem(PLAYER_SESSION_KEY);
-    if (!raw) {
-      return null;
-    }
-
-    const parsed = JSON.parse(raw) as Partial<PersistedPlayerSession> | null;
-    if (!parsed?.queue || !Array.isArray(parsed.tracks) || !parsed.tracks.length) {
-      return null;
-    }
-
-    return {
-      queue: parsed.queue,
-      tracks: parsed.tracks,
-      currentTrackId: typeof parsed.currentTrackId === "string" ? parsed.currentTrackId : null,
-      progressSeconds: Number.isFinite(parsed.progressSeconds) ? Number(parsed.progressSeconds) : 0,
-      playbackMode:
-        parsed.playbackMode === "shuffle" || parsed.playbackMode === "repeat-one" || parsed.playbackMode === "queue"
-          ? parsed.playbackMode
-          : "queue",
-      shuffleSeed: typeof parsed.shuffleSeed === "number" ? parsed.shuffleSeed : null,
-      shuffleHistory: Array.isArray(parsed.shuffleHistory)
-        ? parsed.shuffleHistory.filter((item): item is number => Number.isInteger(item))
-        : [],
-      shuffleFuture: Array.isArray(parsed.shuffleFuture)
-        ? parsed.shuffleFuture.filter((item): item is number => Number.isInteger(item))
-        : []
-    };
-  } catch {
-    return null;
-  }
-};
-const writePersistedSession = (session: PersistedPlayerSession | null) => {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  try {
-    if (!session) {
-      window.localStorage.removeItem(PLAYER_SESSION_KEY);
-      return;
-    }
-
-    window.localStorage.setItem(PLAYER_SESSION_KEY, JSON.stringify(session));
-  } catch {
-    // Ignore storage write failures to keep playback responsive.
-  }
-};
-const pickTrueRandomNextIndex = (queue: QueueState, currentIndex: number) => {
-  if (!queue.items.length) {
-    return -1;
-  }
-
-  if (queue.items.length === 1) {
-    return 0;
-  }
-
-  const candidates = queue.items
-    .map((_, index) => index)
-    .filter((index) => index !== currentIndex);
-  return candidates[randomIndex(candidates.length)] ?? -1;
-};
-const canSetSinkId = (element: HTMLAudioElement): element is HTMLAudioElement & { setSinkId: (sinkId: string) => Promise<void> } =>
-  typeof (element as HTMLAudioElement & { setSinkId?: unknown }).setSinkId === "function";
-const applyOutputDevice = async (deviceId: string) => {
-  const results = await Promise.all(
-    Object.values(decks).map(async ({ element }) => {
-      if (!canSetSinkId(element)) {
-        return false;
-      }
-
-      try {
-        await element.setSinkId(deviceId);
-        return true;
-      } catch {
-        return false;
-      }
-    })
-  );
-
-  return results.some(Boolean);
-};
-const persistPlayerVolumePreference = (volume: number) => {
-  void bridge.settings
-    .setSetting("player.volume", volume)
-    .then(() => {
-      usePreferencesStore.getState().update("player.volume", volume);
-    })
-    .catch(() => {
-      // Ignore persistence failures and keep playback responsive.
-    });
-};
-
-let audioContext: AudioContext | null = null;
-let deckMixNode: GainNode | null = null;
-let masterGainNode: GainNode | null = null;
-let spectrumAnalyserNode: AnalyserNode | null = null;
-let spectrumDataBuffer: Uint8Array<ArrayBuffer> | null = null;
-let spectrumEngine: SpectrumEngine | null = null;
-let stereoPannerNode: StereoPannerNode | null = null;
-let monoSplitterNode: ChannelSplitterNode | null = null;
-let monoMergeNode: ChannelMergerNode | null = null;
-let monoLeftToLeftGainNode: GainNode | null = null;
-let monoRightToLeftGainNode: GainNode | null = null;
-let monoLeftToRightGainNode: GainNode | null = null;
-let monoRightToRightGainNode: GainNode | null = null;
-let currentChannelMode: "stereo" | "mono" = "stereo";
-let trackSwitchInFlight = false;
-let autoAdvanceTrackId: string | null = null;
-let spectrumFrame: SpectrumFrame = {
-  bars: Array.from({ length: 64 }, () => 0),
-  energy: 0,
-  pulse: 0,
-  lowBandEnergy: 0,
-  timestamp: Date.now()
-};
-const spectrumListeners = new Set<SpectrumListener>();
-let spectrumFrameRaf: number | null = null;
-
-const emitSpectrumFrame = (frame: SpectrumFrame) => {
-  spectrumFrame = frame;
-  spectrumListeners.forEach((listener) => {
-    listener(frame);
-  });
-};
-
-const stopSpectrumLoop = () => {
-  if (spectrumFrameRaf !== null) {
-    window.cancelAnimationFrame(spectrumFrameRaf);
-    spectrumFrameRaf = null;
-  }
-};
-
-const tickSpectrumFrame = () => {
-  if (!spectrumListeners.size) {
-    stopSpectrumLoop();
-    return;
-  }
-
-  ensureAudioGraph();
-  if (spectrumAnalyserNode && spectrumDataBuffer && spectrumEngine) {
-    spectrumAnalyserNode.getByteFrequencyData(spectrumDataBuffer);
-    const frame = spectrumEngine.update(spectrumDataBuffer, Date.now());
-    emitSpectrumFrame(frame);
-  } else {
-    emitSpectrumFrame(spectrumEngine?.getFrame(Date.now()) ?? spectrumFrame);
-  }
-
-  spectrumFrameRaf = window.requestAnimationFrame(tickSpectrumFrame);
-};
-
-const ensureSpectrumLoop = () => {
-  if (!spectrumListeners.size || spectrumFrameRaf !== null) {
-    return;
-  }
-  spectrumFrameRaf = window.requestAnimationFrame(tickSpectrumFrame);
-};
-
-const ensureAudioGraph = () => {
-  if (typeof window === "undefined" || typeof window.AudioContext === "undefined") {
-    return;
-  }
-
-  if (!audioContext) {
-    audioContext = new window.AudioContext();
-  }
-
-  if (deckMixNode && masterGainNode && Object.values(decks).every((deck) => deck.sourceNode && deck.gainNode)) {
-    if (!spectrumAnalyserNode && audioContext) {
-      spectrumAnalyserNode = audioContext.createAnalyser();
-      spectrumAnalyserNode.fftSize = 2048;
-      spectrumAnalyserNode.smoothingTimeConstant = 0.84;
-      spectrumAnalyserNode.minDecibels = -92;
-      spectrumAnalyserNode.maxDecibels = -12;
-      spectrumDataBuffer = new Uint8Array<ArrayBuffer>(new ArrayBuffer(spectrumAnalyserNode.frequencyBinCount));
-      spectrumEngine = new SpectrumEngine({ barCount: 64 });
-      masterGainNode.connect(spectrumAnalyserNode);
-    }
-    return;
-  }
-
-  deckMixNode = audioContext.createGain();
-  masterGainNode = audioContext.createGain();
-  spectrumAnalyserNode = audioContext.createAnalyser();
-  spectrumAnalyserNode.fftSize = 2048;
-  spectrumAnalyserNode.smoothingTimeConstant = 0.84;
-  spectrumAnalyserNode.minDecibels = -92;
-  spectrumAnalyserNode.maxDecibels = -12;
-  spectrumDataBuffer = new Uint8Array<ArrayBuffer>(new ArrayBuffer(spectrumAnalyserNode.frequencyBinCount));
-  spectrumEngine = new SpectrumEngine({ barCount: 64 });
-  monoSplitterNode = audioContext.createChannelSplitter(2);
-  monoMergeNode = audioContext.createChannelMerger(2);
-  monoLeftToLeftGainNode = audioContext.createGain();
-  monoRightToLeftGainNode = audioContext.createGain();
-  monoLeftToRightGainNode = audioContext.createGain();
-  monoRightToRightGainNode = audioContext.createGain();
-
-  monoLeftToLeftGainNode.gain.value = 0.5;
-  monoRightToLeftGainNode.gain.value = 0.5;
-  monoLeftToRightGainNode.gain.value = 0.5;
-  monoRightToRightGainNode.gain.value = 0.5;
-
-  Object.values(decks).forEach((deck) => {
-    if (deck.sourceNode && deck.gainNode) {
-      return;
-    }
-
-    deck.sourceNode = audioContext!.createMediaElementSource(deck.element);
-    deck.gainNode = audioContext!.createGain();
-    deck.gainNode.gain.value = deck.id === activeDeckId ? 1 : 0;
-    deck.sourceNode.connect(deck.gainNode);
-    deck.gainNode.connect(deckMixNode!);
-  });
-
-  deckMixNode.connect(monoSplitterNode);
-  monoSplitterNode.connect(monoLeftToLeftGainNode, 0);
-  monoSplitterNode.connect(monoRightToLeftGainNode, 1);
-  monoSplitterNode.connect(monoLeftToRightGainNode, 0);
-  monoSplitterNode.connect(monoRightToRightGainNode, 1);
-  monoLeftToLeftGainNode.connect(monoMergeNode, 0, 0);
-  monoRightToLeftGainNode.connect(monoMergeNode, 0, 0);
-  monoLeftToRightGainNode.connect(monoMergeNode, 0, 1);
-  monoRightToRightGainNode.connect(monoMergeNode, 0, 1);
-
-  if (typeof audioContext.createStereoPanner === "function") {
-    stereoPannerNode = audioContext.createStereoPanner();
-    stereoPannerNode.connect(masterGainNode);
-  }
-  masterGainNode.connect(audioContext.destination);
-  masterGainNode.connect(spectrumAnalyserNode);
-  currentChannelMode = "stereo";
-  deckMixNode.connect(stereoPannerNode ?? masterGainNode);
-};
-
-const resumeAudioGraph = async () => {
-  ensureAudioGraph();
-  if (audioContext && audioContext.state === "suspended") {
-    try {
-      await audioContext.resume();
-    } catch {
-      // Ignore resume failures and let the element fallback continue.
-    }
-  }
-};
-
-const setOutputGainImmediate = (value: number) => {
-  const clamped = clamp(value, 0, 1);
-  ensureAudioGraph();
-  if (masterGainNode && audioContext) {
-    const now = audioContext.currentTime;
-    masterGainNode.gain.cancelScheduledValues(now);
-    masterGainNode.gain.setValueAtTime(clamped, now);
-    return;
-  }
-
-  Object.values(decks).forEach(({ element }) => {
-    element.volume = clamped;
-  });
-};
-
-const wait = (ms: number) =>
-  new Promise<void>((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
-
-const rampOutputGain = async (targetValue: number, durationSeconds: number) => {
-  const clampedTarget = clamp(targetValue, 0, 1);
-  const clampedDuration = Math.max(0, durationSeconds);
-  if (clampedDuration <= 0) {
-    setOutputGainImmediate(clampedTarget);
-    return;
-  }
-
-  ensureAudioGraph();
-  if (masterGainNode && audioContext) {
-    const now = audioContext.currentTime;
-    const currentValue = masterGainNode.gain.value;
-    masterGainNode.gain.cancelScheduledValues(now);
-    masterGainNode.gain.setValueAtTime(currentValue, now);
-    masterGainNode.gain.linearRampToValueAtTime(clampedTarget, now + clampedDuration);
-    await wait(clampedDuration * 1000);
-    return;
-  }
-
-  Object.values(decks).forEach(({ element }) => {
-    element.volume = clampedTarget;
-  });
-};
-
-const setDeckGainImmediate = (deck: AudioDeck, value: number) => {
-  const clamped = clamp(value, 0, 1);
-  ensureAudioGraph();
-  if (deck.gainNode && audioContext) {
-    const now = audioContext.currentTime;
-    deck.gainNode.gain.cancelScheduledValues(now);
-    deck.gainNode.gain.setValueAtTime(clamped, now);
-    return;
-  }
-
-  deck.element.volume = clamped;
-};
-
-const rampDeckGain = async (deck: AudioDeck, targetValue: number, durationSeconds: number) => {
-  const clampedTarget = clamp(targetValue, 0, 1);
-  const clampedDuration = Math.max(0, durationSeconds);
-  if (clampedDuration <= 0) {
-    setDeckGainImmediate(deck, clampedTarget);
-    return;
-  }
-
-  ensureAudioGraph();
-  if (deck.gainNode && audioContext) {
-    const now = audioContext.currentTime;
-    const currentValue = deck.gainNode.gain.value;
-    deck.gainNode.gain.cancelScheduledValues(now);
-    deck.gainNode.gain.setValueAtTime(currentValue, now);
-    deck.gainNode.gain.linearRampToValueAtTime(clampedTarget, now + clampedDuration);
-    await wait(clampedDuration * 1000);
-    return;
-  }
-
-  deck.element.volume = clampedTarget;
-};
-
-const applyChannelBalance = (balance: number) => {
-  ensureAudioGraph();
-  if (stereoPannerNode && audioContext) {
-    const now = audioContext.currentTime;
-    stereoPannerNode.pan.cancelScheduledValues(now);
-    stereoPannerNode.pan.setValueAtTime(resolveBalancePan(balance), now);
-  }
-};
-
-const applyChannelMode = (mode: "stereo" | "mono") => {
-  ensureAudioGraph();
-  const targetNode = stereoPannerNode ?? masterGainNode;
-  if (!deckMixNode || !targetNode || !monoMergeNode) {
-    return;
-  }
-
-  if (currentChannelMode === mode) {
-    return;
-  }
-
-  try {
-    deckMixNode.disconnect(targetNode);
-  } catch {
-    // Ignore already-disconnected state.
-  }
-
-  try {
-    monoMergeNode.disconnect(targetNode);
-  } catch {
-    // Ignore already-disconnected state.
-  }
-
-  if (mode === "mono") {
-    monoMergeNode.connect(targetNode);
-  } else {
-    deckMixNode.connect(targetNode);
-  }
-
-  currentChannelMode = mode;
-};
-
-const canAutoAdvanceWithFade = (
-  queue: QueueState | null,
-  playbackMode: PlaybackState["playbackMode"],
-  shuffleStrategy: ShuffleStrategy
-) => {
-  if (!queue || !queue.items.length) {
-    return false;
-  }
-
-  if (playbackMode === "repeat-one") {
-    return true;
-  }
-
-  if (playbackMode === "shuffle" && shuffleStrategy === "true-random") {
-    return queue.items.length > 1;
-  }
-
-  return resolveNextQueueIndex(queue, { respectRepeatOne: true }) >= 0;
-};
-
-const resolveAutoAdvanceLeadSeconds = (fadeMode: FadeMode, transitionSeconds: number) =>
-  transitionSeconds;
-
-const resetDeck = (deck: AudioDeck, options: { clearSource?: boolean } = {}) => {
-  deck.element.pause();
-  try {
-    deck.element.currentTime = 0;
-  } catch {
-    // Ignore reset failures while the media element is swapping sources.
-  }
-  setDeckGainImmediate(deck, deck.id === activeDeckId ? 1 : 0);
-  if (options.clearSource) {
-    deck.element.removeAttribute("src");
-    deck.element.load();
-    deck.trackId = null;
-  }
-};
-
-const prepareDeck = async (
-  deck: AudioDeck,
-  track: Track,
-  startAtSeconds: number,
-  playbackRate: number,
-  isMuted: boolean
-) => {
-  deck.trackId = track.id;
-  deck.element.pause();
-  deck.element.src = toFileUrl(track.path);
-  deck.element.load();
-  deck.element.playbackRate = playbackRate;
-  deck.element.muted = isMuted;
-
-  await new Promise<void>((resolve, reject) => {
-    const handleReady = () => {
-      deck.element.removeEventListener("loadedmetadata", handleReady);
-      deck.element.removeEventListener("error", handleError);
-      resolve();
-    };
-    const handleError = () => {
-      deck.element.removeEventListener("loadedmetadata", handleReady);
-      deck.element.removeEventListener("error", handleError);
-      reject(new Error(`Failed to load media: ${track.path}`));
-    };
-
-    deck.element.addEventListener("loadedmetadata", handleReady);
-    deck.element.addEventListener("error", handleError);
-  });
-
-  deck.element.currentTime = Math.min(startAtSeconds, resolveElementDurationSeconds(deck.element, track.duration));
-};
 
 interface PlayerStoreState {
   queue: QueueState | null;
@@ -580,144 +104,6 @@ interface PlayerStoreState {
   restoreSession: (options?: { autoplay?: boolean }) => Promise<void>;
 }
 
-const loadTrack = async (
-  queue: QueueState,
-  playback: PlaybackState,
-  trackMap: Record<string, Track>,
-  trackId: string | null,
-  isMuted: boolean,
-  runtimeDuckActive: boolean,
-  runtimeDuckFactor: number,
-  channelBalance: number,
-  fadeEnabled: boolean,
-  fadeMode: FadeMode,
-  crossfadeSeconds: number,
-  options: {
-    autoplay?: boolean;
-    startAtSeconds?: number;
-    replayGainEnabled?: boolean;
-    replayGainMultiplier?: number;
-  } = {}
-) => {
-  trackSwitchInFlight = true;
-  autoAdvanceTrackId = null;
-  try {
-    if (!trackId) {
-      Object.values(decks).forEach((deck) => resetDeck(deck, { clearSource: true }));
-      setOutputGainImmediate(0);
-      return {
-        currentTrack: null,
-        lyrics: null,
-        playback: {
-          ...playback,
-          isPlaying: false
-        }
-      };
-    }
-
-    const currentTrack = trackMap[trackId] ?? null;
-    if (!currentTrack) {
-      return {
-        currentTrack: null,
-        lyrics: null,
-        playback
-      };
-    }
-
-    const previousDeck = getActiveDeck();
-    const nextDeck = getInactiveDeck();
-    const hasActiveSource = Boolean(previousDeck.element.src) && !previousDeck.element.paused;
-    const transitionSeconds = resolveFadeTransitionSeconds(fadeEnabled, crossfadeSeconds);
-    const autoplay = options.autoplay ?? true;
-    const startAtSeconds = Math.max(0, options.startAtSeconds ?? 0);
-
-    applyChannelBalance(channelBalance);
-
-    await prepareDeck(nextDeck, currentTrack, startAtSeconds, playback.playbackRate, isMuted);
-    setOutputGainImmediate(
-      resolveOutputVolume(
-        playback.volume,
-        runtimeDuckActive,
-        runtimeDuckFactor,
-        options.replayGainEnabled ?? false,
-        options.replayGainMultiplier ?? 1
-      )
-    );
-
-    if (autoplay) {
-      await resumeAudioGraph();
-
-      if (hasActiveSource && transitionSeconds > 0) {
-        if (fadeMode === "fade") {
-          await rampDeckGain(previousDeck, 0, transitionSeconds);
-          previousDeck.element.pause();
-          previousDeck.element.removeAttribute("src");
-          previousDeck.element.load();
-          previousDeck.trackId = null;
-          activeDeckId = nextDeck.id;
-          setDeckGainImmediate(nextDeck, 0);
-          await nextDeck.element.play();
-          void rampDeckGain(nextDeck, 1, transitionSeconds);
-        } else {
-          setDeckGainImmediate(nextDeck, 0);
-          activeDeckId = nextDeck.id;
-          await nextDeck.element.play();
-          await Promise.all([
-            rampDeckGain(previousDeck, 0, transitionSeconds),
-            rampDeckGain(nextDeck, 1, transitionSeconds)
-          ]);
-          previousDeck.element.pause();
-          previousDeck.element.removeAttribute("src");
-          previousDeck.element.load();
-          previousDeck.trackId = null;
-        }
-      } else {
-        if (hasActiveSource) {
-          resetDeck(previousDeck, { clearSource: true });
-        }
-        activeDeckId = nextDeck.id;
-        setDeckGainImmediate(nextDeck, transitionSeconds > 0 ? 0 : 1);
-        await nextDeck.element.play();
-        if (transitionSeconds > 0) {
-          void rampDeckGain(nextDeck, 1, transitionSeconds);
-        } else {
-          setDeckGainImmediate(nextDeck, 1);
-        }
-      }
-      await bridge.collection.recordPlay(currentTrack.id);
-    } else {
-      if (hasActiveSource) {
-        resetDeck(previousDeck, { clearSource: true });
-      }
-      activeDeckId = nextDeck.id;
-      setDeckGainImmediate(nextDeck, 1);
-      nextDeck.element.pause();
-    }
-    const lyrics = await bridge.lyrics.getLyrics(currentTrack.id);
-
-    const nextPlayback = startTrackPlayback(playback, {
-      queue,
-      currentTrackId: toPlayerTrackId(currentTrack.id),
-      progressSeconds: nextDeck.element.currentTime,
-      durationSeconds: resolveDurationSeconds(currentTrack.duration)
-    });
-
-    return {
-      currentTrack,
-      lyrics,
-      playback: autoplay
-        ? nextPlayback
-        : {
-            ...nextPlayback,
-            isPlaying: false,
-            progressSeconds: nextDeck.element.currentTime
-          }
-    };
-  } finally {
-    trackSwitchInFlight = false;
-  }
-};
-
 export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
   queue: null,
   playback: createPlaybackState(),
@@ -744,7 +130,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
   runtimeDuckFactor: 0.35,
   hydrateAudio: () => {
     ensureAudioGraph();
-    Object.values(decks).forEach((deck) => {
+    getAllDecks().forEach((deck) => {
       deck.element.playbackRate = get().playback.playbackRate;
       deck.element.muted = get().isMuted;
     });
@@ -768,9 +154,9 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
       }));
     };
 
-    Object.values(decks).forEach((deck) => {
+    getAllDecks().forEach((deck) => {
       deck.element.addEventListener("timeupdate", () => {
-        if (deck.id !== activeDeckId) {
+        if (deck.element !== getActiveAudioElement()) {
           return;
         }
 
@@ -783,15 +169,15 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
         const remainingSeconds =
           resolveElementDurationSeconds(deck.element, state.currentTrack?.duration ?? state.playback.durationSeconds) - deck.element.currentTime;
         if (
-          !trackSwitchInFlight &&
+          !isTrackSwitchInFlight() &&
           state.currentTrack &&
           transitionSeconds > 0 &&
           remainingSeconds > 0.05 &&
           remainingSeconds <= autoAdvanceLeadSeconds &&
-          autoAdvanceTrackId !== state.currentTrack.id &&
+          getAutoAdvanceTrackId() !== state.currentTrack.id &&
           canAutoAdvanceWithFade(state.queue, state.playback.playbackMode, state.shuffleStrategy)
         ) {
-          autoAdvanceTrackId = state.currentTrack.id;
+          setAutoAdvanceTrackId(state.currentTrack.id);
           void get().playNext("auto");
         }
         if (Math.floor(deck.element.currentTime * 2) % 2 === 0) {
@@ -800,23 +186,23 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
       });
 
       deck.element.addEventListener("loadedmetadata", () => {
-        if (deck.id === activeDeckId) {
+        if (deck.element === getActiveAudioElement()) {
           syncDuration();
         }
       });
       deck.element.addEventListener("durationchange", () => {
-        if (deck.id === activeDeckId) {
+        if (deck.element === getActiveAudioElement()) {
           syncDuration();
         }
       });
       deck.element.addEventListener("canplay", () => {
-        if (deck.id === activeDeckId) {
+        if (deck.element === getActiveAudioElement()) {
           syncDuration();
         }
       });
 
       deck.element.addEventListener("pause", () => {
-        if (deck.id !== activeDeckId) {
+        if (deck.element !== getActiveAudioElement()) {
           return;
         }
         set((state) => ({
@@ -829,7 +215,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
       });
 
       deck.element.addEventListener("play", () => {
-        if (deck.id !== activeDeckId) {
+        if (deck.element !== getActiveAudioElement()) {
           return;
         }
         set((state) => ({
@@ -842,7 +228,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
       });
 
       deck.element.addEventListener("ended", () => {
-        if (deck.id !== activeDeckId || trackSwitchInFlight) {
+        if (deck.element !== getActiveAudioElement() || isTrackSwitchInFlight()) {
           return;
         }
         void get().playNext("auto");
@@ -881,7 +267,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
 
     if (nextPlaybackRate !== null) {
       const clampedRate = Math.min(3, Math.max(0.5, nextPlaybackRate));
-      Object.values(decks).forEach((deck) => {
+      getAllDecks().forEach((deck) => {
         deck.element.playbackRate = clampedRate;
       });
     }
@@ -947,7 +333,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
         store.replayGainMultiplier
       )
     );
-    Object.values(decks).forEach((deck) => {
+    getAllDecks().forEach((deck) => {
       deck.element.muted = store.isMuted;
     });
 
@@ -1113,7 +499,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
       };
     }
     if (!nextPlayback.currentTrackId) {
-      Object.values(decks).forEach((deck) => deck.element.pause());
+      getAllDecks().forEach((deck) => deck.element.pause());
       set({ queue: nextQueue, playback: nextPlayback, currentTrack: null, lyrics: null });
       get().persistSession();
       return;
@@ -1183,7 +569,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
       };
     }
     if (!nextPlayback.currentTrackId) {
-      Object.values(decks).forEach((deck) => deck.element.pause());
+      getAllDecks().forEach((deck) => deck.element.pause());
       set({ queue: nextQueue, playback: nextPlayback, currentTrack: null, lyrics: null });
       get().persistSession();
       return;
@@ -1226,7 +612,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     setOutputGainImmediate(
       resolveOutputVolume(volume, state.runtimeDuckActive, state.runtimeDuckFactor, state.replayGainEnabled, state.replayGainMultiplier)
     );
-    Object.values(decks).forEach((deck) => {
+    getAllDecks().forEach((deck) => {
       deck.element.muted = nextMuted;
     });
     set((state) => ({
@@ -1239,7 +625,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
   },
   setPlaybackRateLevel: (rate) => {
     const clampedRate = Math.min(3, Math.max(0.5, rate));
-    Object.values(decks).forEach((deck) => {
+    getAllDecks().forEach((deck) => {
       deck.element.playbackRate = clampedRate;
     });
     set((state) => ({
@@ -1250,7 +636,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
   toggleMute: () => {
     set((state) => {
       if (!state.isMuted && state.playback.volume > 0) {
-        Object.values(decks).forEach((deck) => {
+        getAllDecks().forEach((deck) => {
           deck.element.muted = true;
         });
         return {
@@ -1260,7 +646,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
       }
 
       const restoredVolume = state.playback.volume > 0 ? state.playback.volume : Math.max(state.lastVolumeBeforeMute, 0.05);
-      Object.values(decks).forEach((deck) => {
+      getAllDecks().forEach((deck) => {
         deck.element.muted = false;
       });
       setOutputGainImmediate(
@@ -1292,7 +678,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
       }
 
       if (!state.isMuted) {
-        Object.values(decks).forEach((deck) => {
+        getAllDecks().forEach((deck) => {
           deck.element.muted = false;
         });
         setOutputGainImmediate(
@@ -1328,8 +714,8 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     get().persistSession();
   },
   clearPlayback: () => {
-    Object.values(decks).forEach((deck) => resetDeck(deck, { clearSource: true }));
-    activeDeckId = "a";
+    getAllDecks().forEach((deck) => resetDeck(deck, { clearSource: true }));
+    setActiveDeckId("a");
     setOutputGainImmediate(0);
 
     set((state) => ({
@@ -1349,7 +735,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
         shuffleSeed: state.playback.playbackMode === "shuffle" ? state.playback.shuffleSeed : null
       })
     }));
-    writePersistedSession(null);
+    void writePersistedSession(null);
   },
   syncTrackInState: (track) => {
     set((state) => ({
@@ -1507,11 +893,11 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
   persistSession: () => {
     const state = get();
     if (!state.queue || !state.currentTrack) {
-      writePersistedSession(null);
+      void writePersistedSession(null);
       return;
     }
 
-    writePersistedSession({
+    void writePersistedSession({
       queue: state.queue,
       tracks: Object.values(state.trackMap),
       currentTrackId: state.currentTrack.id,
@@ -1523,7 +909,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     });
   },
   restoreSession: async (options = {}) => {
-    const session = readPersistedSession();
+    const session = await readPersistedSession();
     if (!session) {
       return;
     }
@@ -1531,7 +917,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     const trackMap = Object.fromEntries(session.tracks.map((track) => [track.id, track]));
     const currentTrack = session.currentTrackId ? trackMap[session.currentTrackId] ?? null : null;
     if (!currentTrack) {
-      writePersistedSession(null);
+      void writePersistedSession(null);
       return;
     }
 
@@ -1600,18 +986,4 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
 }));
 
 export type PlayerSpectrumFrame = SpectrumFrame;
-
-export const getPlayerSpectrumFrame = (): PlayerSpectrumFrame => spectrumFrame;
-
-export const subscribePlayerSpectrum = (listener: SpectrumListener) => {
-  spectrumListeners.add(listener);
-  listener(spectrumFrame);
-  ensureSpectrumLoop();
-
-  return () => {
-    spectrumListeners.delete(listener);
-    if (!spectrumListeners.size) {
-      stopSpectrumLoop();
-    }
-  };
-};
+export { getPlayerSpectrumFrame, subscribePlayerSpectrum };

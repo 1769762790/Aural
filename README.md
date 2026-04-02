@@ -215,14 +215,10 @@ MIT License 📄
 
 ## 待完成
 
-* 修复每次重启后，音量会重置，音量是不是没有持久化存储
-* 修复每次重启后，没有定位上一次播放的歌曲及进度
 * 歌词换行scale 遮挡问题
-* 没有播放的歌曲时，禁止跳转播放器界面
-* 点击关闭程序，增加是关闭到后台运行还是直接关闭软件
 * Output device 选择无效
-* 检测代码结构，是否严格按照软件工程规范拆分，例如前端组件是否按照react组件拆分规则拆分，工具方法是否抽离，复用逻辑是否使用hooks拆分
 * 增加git flow 工作流，完善提交代码commit 提交以及代码检测
 
 
 ## 分析接入@unblockneteasemusic/server 可行性以及如何切换本地和在线数据
+https://github.com/UnblockNeteaseMusic/server
