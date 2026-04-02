@@ -3,7 +3,12 @@ import type {
   AlbumSummary,
   ArtistDetail,
   ArtistSummary,
+  PlayableArtistDetail,
   FolderSummary,
+  LyricsAvailability,
+  MediaSource,
+  OnlineProviderId,
+  PlayableItem,
   PlaylistSummary,
   SearchScope,
   SettingKey,
@@ -14,7 +19,27 @@ import type {
 } from "@aural/domain";
 import type { PlaylistId, TrackId } from "@aural/domain";
 
-export type { AlbumDetail, AlbumSummary, ArtistDetail, ArtistSummary, FolderSummary, PlaylistSummary, SearchScope, SettingKey, SettingValue, SortDirection, Track, TrackStatus, PlaylistId, TrackId };
+export type {
+  AlbumDetail,
+  AlbumSummary,
+  ArtistDetail,
+  ArtistSummary,
+  PlayableArtistDetail,
+  FolderSummary,
+  LyricsAvailability,
+  MediaSource,
+  OnlineProviderId,
+  PlayableItem,
+  PlaylistSummary,
+  SearchScope,
+  SettingKey,
+  SettingValue,
+  SortDirection,
+  Track,
+  TrackStatus,
+  PlaylistId,
+  TrackId
+};
 
 export interface TrackRecordInput {
   id?: TrackId;
@@ -75,7 +100,38 @@ export interface CreatePlaylistInput {
 
 export interface PlaylistMutationInput {
   playlistId: PlaylistId;
-  trackIds: TrackId[];
+  itemIds: string[];
+}
+
+export interface PlayableItemRecordInput {
+  id: string;
+  source: MediaSource;
+  provider?: OnlineProviderId | null;
+  providerItemId?: string | null;
+  title: string;
+  artist: string;
+  album: string;
+  albumArtist?: string;
+  year?: number | null;
+  genre?: string | null;
+  duration?: number;
+  format?: string;
+  bitrate?: number | null;
+  sampleRate?: number | null;
+  coverPath?: string | null;
+  coverUrl?: string | null;
+  lyricPath?: string | null;
+  path?: string | null;
+  directory?: string | null;
+  isFavorite?: boolean;
+  playCount?: number;
+  addedAt?: string;
+  lastPlayedAt?: string | null;
+  status?: TrackStatus;
+  fileHash?: string | null;
+  lyricsAvailability?: LyricsAvailability;
+  downloadedPath?: string | null;
+  localTrackId?: TrackId | null;
 }
 
 export interface ScanFolderRecord {
@@ -135,6 +191,7 @@ export interface ArtistSummaryRow {
   track_count: number;
   album_count: number;
   cover_path: string | null;
+  cover_url: string | null;
 }
 
 export interface AlbumSummaryRow {
@@ -161,12 +218,72 @@ export interface PlaylistItemRow {
   added_at: string;
 }
 
+export interface PlayableItemRow {
+  id: string;
+  source: MediaSource;
+  provider: OnlineProviderId | null;
+  provider_item_id: string | null;
+  title: string;
+  artist: string;
+  album: string;
+  album_artist: string;
+  year: number | null;
+  genre: string | null;
+  duration: number;
+  format: string;
+  bitrate: number | null;
+  sample_rate: number | null;
+  cover_path: string | null;
+  cover_url: string | null;
+  lyric_path: string | null;
+  path: string | null;
+  directory: string | null;
+  play_count: number;
+  added_at: string;
+  last_played_at: string | null;
+  status: TrackStatus;
+  file_hash: string | null;
+  lyrics_availability: LyricsAvailability;
+  downloaded_path: string | null;
+  local_track_id: string | null;
+  search_blob: string;
+}
+
+export interface FavoriteItemRow {
+  playable_item_id: string;
+  created_at: string;
+}
+
+export interface PlaylistEntryRow {
+  playlist_id: string;
+  playable_item_id: string;
+  sort_index: number;
+  added_at: string;
+}
+
 export interface HistoryRow {
   history_id: number;
   track_id: string;
   played_at: string;
   source_type: string;
   source_id: string;
+}
+
+export interface PlayableHistoryRow {
+  history_id: number;
+  playable_item_id: string;
+  played_at: string;
+  source_type: string;
+  source_id: string;
+}
+
+export interface DownloadedAssetRow {
+  playable_item_id: string;
+  provider: OnlineProviderId;
+  provider_item_id: string;
+  local_path: string;
+  status: "ready" | "failed" | "pending";
+  downloaded_at: string | null;
 }
 
 export interface OverviewRecord {

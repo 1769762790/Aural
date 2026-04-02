@@ -109,7 +109,7 @@ export const PlayerAudioBridge = () => {
 
       const state = usePlayerStore.getState();
 
-      if (likelyInserted && headphoneInsertAction === "play" && state.currentTrack && !state.playback.isPlaying) {
+      if (likelyInserted && headphoneInsertAction === "play" && state.currentItem && !state.playback.isPlaying) {
         void state.togglePlay();
       }
 

@@ -13,6 +13,8 @@ export const openPath = async (targetPath: string) => {
   if (!targetPath) {
     return;
   }
-  await shell.openPath(targetPath);
+  const result = await shell.openPath(targetPath);
+  if (result) {
+    throw new Error(result);
+  }
 };
-

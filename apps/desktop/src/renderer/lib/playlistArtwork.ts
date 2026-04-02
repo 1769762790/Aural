@@ -1,4 +1,4 @@
-import type { Track } from "@aural/domain";
+import type { PlayableItem, Track } from "@aural/domain";
 import { toFileUrl } from "@renderer/lib/fileUrl";
 
 const gradientColorPresets = [
@@ -38,7 +38,8 @@ export const gradientForSeed = (seed: string) => {
   return `linear-gradient(${direction}, ${colors[0]}, ${colors[1]}, ${colors[2]})`;
 };
 
-export const getTrackTime = (track: Track) => new Date(track.lastPlayedAt ?? track.addedAt).getTime();
+export const getTrackTime = (track: Pick<Track | PlayableItem, "lastPlayedAt" | "addedAt">) =>
+  new Date(track.lastPlayedAt ?? track.addedAt).getTime();
 
 export const buildPlaylistHeroArtwork = (seed: string, coverPath: string | null) =>
   coverPath

@@ -1,7 +1,7 @@
 import type { PlaylistDetail } from "@aural/contracts";
-import type { Track } from "@aural/domain";
+import type { PlayableItem } from "@aural/domain";
 import { Badge, Button, EmptyState } from "@aural/ui";
-import { TrackTable } from "@renderer/components/TrackTable";
+import { PlayableItemTable } from "@renderer/components/PlayableItemTable";
 import { formatDateTime, formatDuration } from "@renderer/lib/formatters";
 
 interface CollectionPlaylistDetailProps {
@@ -16,8 +16,8 @@ interface CollectionPlaylistDetailProps {
   onSaveRename: () => void;
   onDeleteSelected: () => void;
   onPlayPlaylist: () => void;
-  onPlayTrack: (track: Track) => void;
-  onFavoriteTrack?: (track: Track) => void | Promise<void>;
+  onPlayTrack: (track: PlayableItem) => void;
+  onFavoriteTrack?: (track: PlayableItem) => void | Promise<void>;
 }
 
 const fieldStyle = {
@@ -58,7 +58,7 @@ export const CollectionPlaylistDetail = ({
     );
   }
 
-  const totalDuration = playlist.tracks.reduce((sum: number, track: Track) => sum + track.duration, 0);
+  const totalDuration = playlist.items.reduce((sum: number, track: PlayableItem) => sum + track.duration, 0);
 
   return (
     <div style={{ display: "grid", gap: 18 }}>
@@ -86,7 +86,7 @@ export const CollectionPlaylistDetail = ({
 
           {!isRenaming ? (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <Button type="button" variant="primary" onClick={onPlayPlaylist} disabled={!playlist.tracks.length}>
+              <Button type="button" variant="primary" onClick={onPlayPlaylist} disabled={!playlist.items.length}>
                 Play
               </Button>
               <Button type="button" variant="soft" onClick={onStartRename}>
@@ -141,8 +141,31 @@ export const CollectionPlaylistDetail = ({
         ) : null}
       </div>
 
-      {playlist.tracks.length ? (
-        <TrackTable tracks={playlist.tracks} onPlay={onPlayTrack} onFavorite={onFavoriteTrack} />
+      {playlist.items.length ? (
+        <PlayableItemTable
+          items={playlist.items}
+          emptyTitle="This playlist is empty."
+          emptyDescription="Add tracks from the library or online search, then come back here to play or rearrange them."
+          onPlayAll={onPlayPlaylist}
+          onShuffle={onPlayPlaylist}
+          onPlayItem={onPlayTrack}
+          renderItemActions={
+            onFavoriteTrack
+              ? (item) => (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void onFavoriteTrack(item);
+                    }}
+                  >
+                    {item.isFavorite ? "Unsave" : "Save"}
+                  </Button>
+                )
+              : undefined
+          }
+        />
       ) : (
         <EmptyState
           eyebrow="Playlist"

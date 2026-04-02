@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export const SCHEMA_SQL = `
 PRAGMA foreign_keys = ON;
@@ -75,6 +75,42 @@ CREATE TABLE IF NOT EXISTS playlists (
   updated_at TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS playable_items (
+  id TEXT PRIMARY KEY,
+  source TEXT NOT NULL,
+  provider TEXT,
+  provider_item_id TEXT,
+  title TEXT NOT NULL,
+  artist TEXT NOT NULL,
+  album TEXT NOT NULL,
+  album_artist TEXT NOT NULL,
+  year INTEGER,
+  genre TEXT,
+  duration REAL NOT NULL DEFAULT 0,
+  format TEXT NOT NULL DEFAULT 'STREAM',
+  bitrate INTEGER,
+  sample_rate INTEGER,
+  cover_path TEXT,
+  cover_url TEXT,
+  lyric_path TEXT,
+  path TEXT,
+  directory TEXT,
+  play_count INTEGER NOT NULL DEFAULT 0,
+  added_at TEXT NOT NULL,
+  last_played_at TEXT,
+  status TEXT NOT NULL DEFAULT 'ready',
+  file_hash TEXT,
+  lyrics_availability TEXT NOT NULL DEFAULT 'none',
+  downloaded_path TEXT,
+  local_track_id TEXT,
+  search_blob TEXT NOT NULL DEFAULT '',
+  FOREIGN KEY (local_track_id) REFERENCES tracks(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_playable_items_source ON playable_items(source, added_at DESC);
+CREATE INDEX IF NOT EXISTS idx_playable_items_provider ON playable_items(provider, provider_item_id);
+CREATE INDEX IF NOT EXISTS idx_playable_items_local_track ON playable_items(local_track_id);
+
 CREATE TABLE IF NOT EXISTS playlist_items (
   playlist_id TEXT NOT NULL,
   track_id TEXT NOT NULL,
@@ -87,6 +123,18 @@ CREATE TABLE IF NOT EXISTS playlist_items (
 
 CREATE INDEX IF NOT EXISTS idx_playlist_items_playlist ON playlist_items(playlist_id, sort_index);
 
+CREATE TABLE IF NOT EXISTS playlist_entries (
+  playlist_id TEXT NOT NULL,
+  playable_item_id TEXT NOT NULL,
+  sort_index INTEGER NOT NULL,
+  added_at TEXT NOT NULL,
+  PRIMARY KEY (playlist_id, playable_item_id),
+  FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE,
+  FOREIGN KEY (playable_item_id) REFERENCES playable_items(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_playlist_entries_playlist ON playlist_entries(playlist_id, sort_index);
+
 CREATE TABLE IF NOT EXISTS play_history (
   history_id INTEGER PRIMARY KEY AUTOINCREMENT,
   track_id TEXT NOT NULL,
@@ -97,6 +145,33 @@ CREATE TABLE IF NOT EXISTS play_history (
 );
 
 CREATE INDEX IF NOT EXISTS idx_play_history_track ON play_history(track_id, played_at DESC);
+
+CREATE TABLE IF NOT EXISTS play_history_items (
+  history_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  playable_item_id TEXT NOT NULL,
+  played_at TEXT NOT NULL,
+  source_type TEXT NOT NULL,
+  source_id TEXT NOT NULL,
+  FOREIGN KEY (playable_item_id) REFERENCES playable_items(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_play_history_items_item ON play_history_items(playable_item_id, played_at DESC);
+
+CREATE TABLE IF NOT EXISTS favorite_items (
+  playable_item_id TEXT PRIMARY KEY,
+  created_at TEXT NOT NULL,
+  FOREIGN KEY (playable_item_id) REFERENCES playable_items(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS downloaded_assets (
+  playable_item_id TEXT PRIMARY KEY,
+  provider TEXT NOT NULL,
+  provider_item_id TEXT NOT NULL,
+  local_path TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'ready',
+  downloaded_at TEXT,
+  FOREIGN KEY (playable_item_id) REFERENCES playable_items(id) ON DELETE CASCADE
+);
 
 CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,

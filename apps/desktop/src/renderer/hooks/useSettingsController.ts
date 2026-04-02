@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SettingKey, SettingValue } from "@aural/domain";
 import { defaultSettings, getDefaultSettingValue } from "@renderer/components/settings-catalog";
 import { bridge } from "@renderer/lib/bridge";
+import { persistSetting, resolveSettingPersistenceStrategy } from "@renderer/lib/settingsPersistence";
 import { usePreferencesStore } from "@renderer/stores/preferencesStore";
 
 type SettingsStateMap = Partial<Record<SettingKey, SettingValue>>;
@@ -65,11 +66,19 @@ export const useSettingsController = () => {
       setValues((current) => ({ ...current, [key]: nextValue }));
       valuesRef.current = { ...valuesRef.current, [key]: nextValue };
       updatePreference(key, nextValue);
-      setPending((current) => ({ ...current, [key]: true }));
       setErrors((current) => ({ ...current, [key]: null }));
 
+      const strategy = resolveSettingPersistenceStrategy(key);
+      if (strategy !== "immediate") {
+        setPending((current) => ({ ...current, [key]: false }));
+        void persistSetting(key, nextValue);
+        return;
+      }
+
+      setPending((current) => ({ ...current, [key]: true }));
+
       try {
-        await bridge.settings.setSetting(key, nextValue);
+        await persistSetting(key, nextValue);
         if (requestVersionRef.current[key] === version) {
           setValues((current) => ({ ...current, [key]: nextValue }));
           valuesRef.current = { ...valuesRef.current, [key]: nextValue };

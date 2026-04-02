@@ -12,27 +12,27 @@ import { cn } from "@/lib/utils";
 import { extractCoverTheme, getFallbackCoverTheme } from "@renderer/lib/coverTheme";
 import { formatDuration } from "@renderer/lib/formatters";
 import { buildPlaylistCardArtwork } from "@renderer/lib/playlistArtwork";
-import { toFileUrl } from "@renderer/lib/fileUrl";
+import { resolvePlayableCoverUrl } from "@renderer/lib/playable";
 import { usePreferencesStore } from "@renderer/stores/preferencesStore";
 import { usePlayerStore } from "@renderer/stores/playerStore";
 
 export const NowPlayingQueueDrawer = () => {
-  const currentTrack = usePlayerStore((state) => state.currentTrack);
+  const currentItem = usePlayerStore((state) => state.currentItem);
   const queue = usePlayerStore((state) => state.queue);
-  const trackMap = usePlayerStore((state) => state.trackMap);
-  const playTracks = usePlayerStore((state) => state.playTracks);
+  const itemMap = usePlayerStore((state) => state.itemMap);
+  const playItems = usePlayerStore((state) => state.playItems);
   const queueOpen = usePlayerStore((state) => state.queueOpen);
   const setQueueOpen = usePlayerStore((state) => state.setQueueOpen);
   const coverColorEnabled = usePreferencesStore((state) => state.snapshot["appearance.coverColor"] !== false);
   const [coverTheme, setCoverTheme] = useState(getFallbackCoverTheme);
 
-  const coverUrl = currentTrack?.coverPath ? toFileUrl(currentTrack.coverPath) : null;
-  const queueTracks = useMemo(
+  const coverUrl = resolvePlayableCoverUrl(currentItem);
+  const queueItems = useMemo(
     () =>
       (queue?.items
-        .map((item) => trackMap[item.trackId as unknown as string])
-        .filter((track): track is NonNullable<typeof currentTrack> => Boolean(track)) ?? []),
-    [currentTrack, queue?.items, trackMap]
+        .map((item) => itemMap[item.trackId as unknown as string])
+        .filter((item): item is NonNullable<typeof currentItem> => Boolean(item)) ?? []),
+    [currentItem, queue?.items, itemMap]
   );
 
   useEffect(() => {
@@ -54,7 +54,7 @@ export const NowPlayingQueueDrawer = () => {
     };
   }, [coverColorEnabled, coverUrl]);
 
-  if (!currentTrack) {
+  if (!currentItem) {
     return null;
   }
 
@@ -95,10 +95,11 @@ export const NowPlayingQueueDrawer = () => {
             </div>
           </DrawerHeader>
 
-          {queueTracks.length ? (
+          {queueItems.length ? (
             <div className="mt-4 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
-              {queueTracks.map((track, index) => {
-                const isActive = track.id === currentTrack.id;
+              {queueItems.map((track, index) => {
+                const isActive = track.id === currentItem.id;
+                const trackCoverUrl = resolvePlayableCoverUrl(track);
 
                 return (
                   <button
@@ -111,8 +112,8 @@ export const NowPlayingQueueDrawer = () => {
                         : "border-border bg-background/38 hover:bg-accent/42"
                     )}
                     onClick={() => {
-                      void playTracks(
-                        queueTracks,
+                      void playItems(
+                        queueItems,
                         track.id,
                         queue?.items[index]?.sourceType ?? "library",
                         queue?.items[index]?.sourceId ?? "queue"
@@ -124,7 +125,7 @@ export const NowPlayingQueueDrawer = () => {
                     </div>
                     <div
                       className="size-12 shrink-0 rounded-[16px] border border-border bg-cover bg-center"
-                      style={buildPlaylistCardArtwork(track.id, track.coverPath)}
+                      style={trackCoverUrl ? { backgroundImage: `url("${trackCoverUrl}")` } : buildPlaylistCardArtwork(track.id, track.coverPath)}
                     />
                     <div className="min-w-0 flex-1">
                       <p className={cn("truncate text-sm font-semibold", isActive ? "text-foreground" : "text-foreground/82")}>

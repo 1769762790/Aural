@@ -63,7 +63,12 @@ export const defaultSettings: Record<SettingKey, SettingValue> = {
   "history.maxItems": 300,
   "history.clearOnExit": false,
   "library.density": "default",
-  "settings.centerDraft": null
+  "settings.centerDraft": null,
+  "online.enabled": true,
+  "online.providerBaseUrl": null,
+  "online.preferDownloadedCopy": true,
+  "online.downloadDirectory": null,
+  "online.lastMode": "local"
 };
 
 export const settingsSections: SettingsSectionDefinition[] = [

@@ -30,6 +30,14 @@ export const getAllSettings = (database: AuralDatabase): SettingRecord[] =>
     updatedAt: row.updated_at
   }));
 
+export const setManySettings = (database: AuralDatabase, records: Array<{ key: SettingKey; value: SettingValue }>): SettingRecord[] => {
+  if (!records.length) {
+    return [];
+  }
+
+  return database.transaction(() => records.map(({ key, value }) => setSetting(database, key, value)));
+};
+
 export const searchArtists = (listArtistsFn: () => ArtistSummary[], term: string): ArtistSummary[] => {
   const normalized = buildSearchBlob(term);
   return listArtistsFn().filter((artist) => buildSearchBlob(artist.name).includes(normalized));

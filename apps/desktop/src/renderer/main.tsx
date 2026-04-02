@@ -16,6 +16,16 @@ import { PlayerPage } from "./pages/PlayerPage";
 import { PlaylistDetailPage } from "./pages/PlaylistDetailPage";
 import { RecentPage } from "./pages/RecentPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import { OnlineFavoritesPage } from "./pages/OnlineFavoritesPage";
+import { OnlineHistoryPage } from "./pages/OnlineHistoryPage";
+import { OnlinePlaylistsPage } from "./pages/OnlinePlaylistsPage";
+import { OnlinePlaylistDetailPage } from "./pages/OnlinePlaylistDetailPage";
+import { OnlineDownloadsPage } from "./pages/OnlineDownloadsPage";
+import { OnlineArtistsPage } from "./pages/OnlineArtistsPage";
+import { OnlineArtistDetailPage } from "./pages/OnlineArtistDetailPage";
+import { OnlineAlbumsPage } from "./pages/OnlineAlbumsPage";
+import { OnlineAlbumDetailPage } from "./pages/OnlineAlbumDetailPage";
+import { OnlineChartsPage } from "./pages/OnlineChartsPage";
 import "./styles/app.css";
 
 const router = createHashRouter([
@@ -74,6 +84,50 @@ const router = createHashRouter([
       {
         path: "settings",
         element: <SettingsPage />
+      },
+      {
+        path: "online",
+        element: <Navigate to="/online/favorites" replace />
+      },
+      {
+        path: "online/favorites",
+        element: <OnlineFavoritesPage />
+      },
+      {
+        path: "online/artists",
+        element: <OnlineArtistsPage />
+      },
+      {
+        path: "online/artists/:artistId",
+        element: <OnlineArtistDetailPage />
+      },
+      {
+        path: "online/albums",
+        element: <OnlineAlbumsPage />
+      },
+      {
+        path: "online/albums/:albumId",
+        element: <OnlineAlbumDetailPage />
+      },
+      {
+        path: "online/charts",
+        element: <OnlineChartsPage />
+      },
+      {
+        path: "online/history",
+        element: <OnlineHistoryPage />
+      },
+      {
+        path: "online/playlists",
+        element: <OnlinePlaylistsPage />
+      },
+      {
+        path: "online/playlists/:playlistId",
+        element: <OnlinePlaylistDetailPage />
+      },
+      {
+        path: "online/downloads",
+        element: <OnlineDownloadsPage />
       },
       {
         path: "player",

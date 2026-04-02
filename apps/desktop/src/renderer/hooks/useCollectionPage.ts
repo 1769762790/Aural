@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { PlaylistDetail } from "@aural/contracts";
-import type { PlaylistSummary, Track } from "@aural/domain";
+import type { PlayableItem, PlaylistSummary } from "@aural/domain";
 import { usePlayerStore } from "@renderer/stores/playerStore";
 import { bridge } from "@renderer/lib/bridge";
 import { useAsyncResource } from "./useAsyncResource";
@@ -19,7 +19,7 @@ const resolveErrorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "Something went wrong.";
 
 export const useCollectionPage = () => {
-  const playTracks = usePlayerStore((state) => state.playTracks);
+  const playItems = usePlayerStore((state) => state.playItems);
 
   const playlists = useAsyncResource(() => bridge.collection.listPlaylists(), []);
   const favorites = useAsyncResource(() => bridge.collection.getFavorites(), []);
@@ -69,14 +69,14 @@ export const useCollectionPage = () => {
   }, [playlists, selectedPlaylist]);
 
   const playTrackList = useCallback(
-    async (tracks: Track[], startTrackId: Track["id"], sourceType: QueueSourceType, sourceId: string) => {
-      if (!tracks.length) {
+    async (items: PlayableItem[], startTrackId: string, sourceType: QueueSourceType, sourceId: string) => {
+      if (!items.length) {
         return;
       }
 
-      await playTracks(tracks, startTrackId, sourceType, sourceId);
+      await playItems(items, startTrackId, sourceType, sourceId);
     },
-    [playTracks]
+    [playItems]
   );
 
   const selectPlaylist = useCallback((playlistId: string) => {
@@ -177,26 +177,26 @@ export const useCollectionPage = () => {
   }, [deletePlaylist, selectedPlaylistId]);
 
   const playSelectedPlaylist = useCallback(async () => {
-    if (!selectedPlaylist.data?.tracks.length) {
+    if (!selectedPlaylist.data?.items.length) {
       return;
     }
 
-    await playTrackList(selectedPlaylist.data.tracks, selectedPlaylist.data.tracks[0].id, "playlist", selectedPlaylist.data.id);
+    await playTrackList(selectedPlaylist.data.items, selectedPlaylist.data.items[0].id, "playlist", selectedPlaylist.data.id);
   }, [playTrackList, selectedPlaylist.data]);
 
   const playPlaylistTrack = useCallback(
-    async (track: Track) => {
-      if (!selectedPlaylist.data?.tracks.length) {
+    async (track: PlayableItem) => {
+      if (!selectedPlaylist.data?.items.length) {
         return;
       }
 
-      await playTrackList(selectedPlaylist.data.tracks, track.id, "playlist", selectedPlaylist.data.id);
+      await playTrackList(selectedPlaylist.data.items, track.id, "playlist", selectedPlaylist.data.id);
     },
     [playTrackList, selectedPlaylist.data]
   );
 
   const playFavoritesTrack = useCallback(
-    async (track: Track) => {
+    async (track: PlayableItem) => {
       if (!favorites.data?.length) {
         return;
       }
@@ -207,7 +207,7 @@ export const useCollectionPage = () => {
   );
 
   const playHistoryTrack = useCallback(
-    async (track: Track) => {
+    async (track: PlayableItem) => {
       if (!history.data?.length) {
         return;
       }
@@ -218,7 +218,7 @@ export const useCollectionPage = () => {
   );
 
   const toggleFavoriteTrack = useCallback(
-    async (track: Track) => {
+    async (track: PlayableItem) => {
       await bridge.collection.toggleFavorite(track.id);
       await Promise.all([favorites.refresh(), history.refresh(), selectedPlaylist.refresh()]);
     },

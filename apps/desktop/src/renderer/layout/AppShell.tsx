@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import type { BrowseMode } from "@aural/domain";
 import {
   Repeat,
   ListMusic,
@@ -26,9 +27,9 @@ import { PlayerAudioBridge } from "@renderer/components/PlayerAudioBridge";
 import { SidebarNavigation } from "@renderer/components/SidebarNavigation";
 import { VolumeControl } from "@renderer/components/VolumeControl";
 import { useImportFolders } from "@renderer/hooks/useImportFolders";
-import { bridge } from "@renderer/lib/bridge";
-import { toFileUrl } from "@renderer/lib/fileUrl";
 import { formatDuration } from "@renderer/lib/formatters";
+import { resolvePlayableCoverUrl } from "@renderer/lib/playable";
+import { persistSetting } from "@renderer/lib/settingsPersistence";
 import { usePlayerStore } from "@renderer/stores/playerStore";
 import { usePreferencesStore } from "@renderer/stores/preferencesStore";
 
@@ -36,8 +37,9 @@ export const AppShell = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const lastNonPlayerRouteRef = useRef("/songs");
+  const lastLocalRouteRef = useRef("/songs");
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
-  const currentTrack = usePlayerStore((state) => state.currentTrack);
+  const currentItem = usePlayerStore((state) => state.currentItem);
   const playback = usePlayerStore((state) => state.playback);
   const togglePlay = usePlayerStore((state) => state.togglePlay);
   const playNext = usePlayerStore((state) => state.playNext);
@@ -46,8 +48,12 @@ export const AppShell = () => {
   const seekTo = usePlayerStore((state) => state.seekTo);
   const queueOpen = usePlayerStore((state) => state.queueOpen);
   const setQueueOpen = usePlayerStore((state) => state.setQueueOpen);
+  const restoreSessionForMode = usePlayerStore((state) => state.restoreSessionForMode);
   const resolvedTheme = usePreferencesStore((state) => state.resolvedTheme);
+  const browseModePreference = usePreferencesStore((state) => state.snapshot["online.lastMode"]);
   const isPlayerOverlayRoute = location.pathname === "/player";
+  const isOnlineRoute = location.pathname.startsWith("/online");
+  const browseMode: BrowseMode = isOnlineRoute ? "online" : (browseModePreference === "online" ? "online" : "local");
   const [scrollbarWidth, setScrollbarWidth] = useState(0);
 
   useEffect(() => {
@@ -57,7 +63,18 @@ export const AppShell = () => {
 
     const route = `${location.pathname}${location.search}${location.hash}`;
     lastNonPlayerRouteRef.current = route || "/songs";
+    if (!route.startsWith("/online")) {
+      lastLocalRouteRef.current = route || "/songs";
+    }
   }, [location.hash, location.pathname, location.search]);
+
+  useEffect(() => {
+    if (location.pathname !== "/" || browseModePreference !== "online") {
+      return;
+    }
+
+    void navigate("/online", { replace: true });
+  }, [browseModePreference, location.pathname, navigate]);
 
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
@@ -84,7 +101,7 @@ export const AppShell = () => {
   }, [location.pathname, location.search, location.hash]);
 
   useEffect(() => {
-    if (location.pathname !== "/player" || currentTrack) {
+    if (location.pathname !== "/player" || currentItem) {
       return;
     }
 
@@ -93,19 +110,31 @@ export const AppShell = () => {
         ? lastNonPlayerRouteRef.current
         : "/songs";
     void navigate(fallbackRoute, { replace: true });
-  }, [currentTrack, location.pathname, navigate]);
+  }, [currentItem, location.pathname, navigate]);
 
-  const coverStyle = currentTrack?.coverPath
-    ? { backgroundImage: `url("${toFileUrl(currentTrack.coverPath)}")` }
-    : undefined;
+  const coverUrl = resolvePlayableCoverUrl(currentItem);
+  const coverStyle = coverUrl ? { backgroundImage: `url("${coverUrl}")` } : undefined;
 
   const isShuffleMode = playback.playbackMode === "shuffle";
   const isRepeatOneMode = playback.playbackMode === "repeat-one";
 
   const isDark = resolvedTheme === "dark";
 
+  const switchBrowseMode = (mode: BrowseMode) => {
+    void persistSetting("online.lastMode", mode);
+    usePreferencesStore.getState().update("online.lastMode", mode);
+    void restoreSessionForMode(mode, { autoplay: false });
+
+    if (mode === "online") {
+      void navigate("/online");
+      return;
+    }
+
+    void navigate(lastLocalRouteRef.current || "/songs");
+  };
+
   const openPlayerOverlay = () => {
-    if (location.pathname === "/player" || !currentTrack) {
+    if (location.pathname === "/player" || !currentItem) {
       return;
     }
 
@@ -113,7 +142,7 @@ export const AppShell = () => {
   };
 
   const openQueueOverlay = () => {
-    if (!currentTrack) {
+    if (!currentItem) {
       return;
     }
 
@@ -136,13 +165,13 @@ export const AppShell = () => {
           ? "repeat-one"
           : "queue";
     setMode(nextMode);
-    void bridge.settings.setSetting("player.playbackMode", nextMode);
+    void persistSetting("player.playbackMode", nextMode);
     usePreferencesStore.getState().update("player.playbackMode", nextMode);
   };
 
   const toggleThemeMode = () => {
     const nextMode = isDark ? "light" : "dark";
-    void bridge.settings.setSetting("appearance.mode", nextMode);
+    void persistSetting("appearance.mode", nextMode);
     usePreferencesStore.getState().update("appearance.mode", nextMode);
   };
 
@@ -157,8 +186,27 @@ export const AppShell = () => {
           <p className="text-[2rem] font-black tracking-[-0.08em] text-foreground text-center">AURAL</p>
         </div>
 
-        <div className="mt-10">
-          <SidebarNavigation />
+        <div className="mt-8 space-y-4">
+          <div className="grid grid-cols-2 gap-2 rounded-[18px] border border-border bg-background/70 p-1">
+            <Button
+              type="button"
+              variant={browseMode === "local" ? "default" : "ghost"}
+              className="h-10 rounded-[14px]"
+              onClick={() => switchBrowseMode("local")}
+            >
+              Local
+            </Button>
+            <Button
+              type="button"
+              variant={browseMode === "online" ? "default" : "ghost"}
+              className="h-10 rounded-[14px]"
+              onClick={() => switchBrowseMode("online")}
+            >
+              Online
+            </Button>
+          </div>
+
+          <SidebarNavigation mode={browseMode} />
         </div>
       </aside>
 
@@ -192,7 +240,7 @@ export const AppShell = () => {
             type="button"
             className={cn(
               "window-no-drag size-14 shrink-0 overflow-hidden rounded-[18px] border border-border bg-cover bg-center shadow-[0_8px_20px_rgba(0,0,0,0.22)] transition-transform",
-              currentTrack ? "hover:-translate-y-0.5" : "cursor-not-allowed opacity-60"
+              currentItem ? "hover:-translate-y-0.5" : "cursor-not-allowed opacity-60"
             )}
             style={
               coverStyle ?? {
@@ -200,13 +248,13 @@ export const AppShell = () => {
               }
             }
             onClick={openPlayerOverlay}
-            disabled={!currentTrack}
+            disabled={!currentItem}
             aria-label="Open now playing drawer"
           />
           <div className="w-[200px] lg:w-[200px] 2xl:w-[280px]">
-            <p className="truncate text-sm font-semibold text-foreground">{currentTrack?.title ?? "No track selected"}</p>
+            <p className="truncate text-sm font-semibold text-foreground">{currentItem?.title ?? "No track selected"}</p>
             <p className="truncate text-xs text-muted-foreground">
-              {currentTrack ? `${currentTrack.artist} / ${currentTrack.album}` : "Import a folder to start curating playback."}
+              {currentItem ? `${currentItem.artist} / ${currentItem.album}` : "Import a folder or switch online mode to start playback."}
             </p>
           </div>
         </div>
@@ -293,11 +341,11 @@ export const AppShell = () => {
             type="button"
             className={cn(
               "hidden items-center gap-2 rounded-full border border-border bg-background/70 px-3 py-2 text-xs text-muted-foreground transition-colors md:flex",
-              currentTrack ? "hover:bg-accent/45 hover:text-foreground" : "cursor-not-allowed opacity-50",
+              currentItem ? "hover:bg-accent/45 hover:text-foreground" : "cursor-not-allowed opacity-50",
               queueOpen && "bg-accent text-foreground"
             )}
             onClick={openQueueOverlay}
-            disabled={!currentTrack}
+            disabled={!currentItem}
             aria-label="Open playing queue"
           >
             <ListMusic className="size-4" />

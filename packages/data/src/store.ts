@@ -41,6 +41,60 @@ export class AuralDatabase {
       this.db.exec("ALTER TABLE album_summaries ADD COLUMN added_at TEXT NOT NULL DEFAULT '';");
     }
 
+    if (currentVersion < 4) {
+      this.db.exec(`
+        INSERT OR IGNORE INTO playable_items (
+          id, source, provider, provider_item_id, title, artist, album, album_artist,
+          year, genre, duration, format, bitrate, sample_rate, cover_path, cover_url,
+          lyric_path, path, directory, play_count, added_at, last_played_at, status,
+          file_hash, lyrics_availability, downloaded_path, local_track_id, search_blob
+        )
+        SELECT
+          t.id,
+          'local',
+          NULL,
+          NULL,
+          t.title,
+          t.artist,
+          t.album,
+          t.album_artist,
+          t.year,
+          t.genre,
+          t.duration,
+          t.format,
+          t.bitrate,
+          t.sample_rate,
+          t.cover_path,
+          NULL,
+          t.lyric_path,
+          t.path,
+          t.directory,
+          t.play_count,
+          t.added_at,
+          t.last_played_at,
+          t.status,
+          t.file_hash,
+          CASE WHEN t.lyric_path IS NOT NULL THEN 'file' ELSE 'none' END,
+          NULL,
+          t.id,
+          t.search_blob
+        FROM tracks t;
+
+        INSERT OR IGNORE INTO favorite_items (playable_item_id, created_at)
+        SELECT id, COALESCE(last_played_at, added_at, CURRENT_TIMESTAMP)
+        FROM tracks
+        WHERE is_favorite = 1;
+
+        INSERT OR IGNORE INTO playlist_entries (playlist_id, playable_item_id, sort_index, added_at)
+        SELECT playlist_id, track_id, sort_index, added_at
+        FROM playlist_items;
+
+        INSERT OR IGNORE INTO play_history_items (playable_item_id, played_at, source_type, source_id)
+        SELECT track_id, played_at, source_type, source_id
+        FROM play_history;
+      `);
+    }
+
     if (currentVersion < SCHEMA_VERSION) {
       this.db.exec(`PRAGMA user_version = ${SCHEMA_VERSION};`);
     }

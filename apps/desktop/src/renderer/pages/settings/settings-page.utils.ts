@@ -1,6 +1,6 @@
 import type { FolderSummary, SettingValue } from "@aural/domain";
 
-export type TabId = "appearance" | "playback" | "library" | "audio";
+export type TabId = "appearance" | "playback" | "library" | "audio" | "online";
 
 export type Draft = {
   startupAutoplay: boolean;
@@ -50,14 +50,16 @@ export const TABS: Array<{ id: TabId; label: string; hint: string }> = [
   { id: "appearance", label: "Interface", hint: "Theme and language" },
   { id: "playback", label: "Playback", hint: "Behavior and devices" },
   { id: "library", label: "Library", hint: "Scan and file rules" },
-  { id: "audio", label: "Audio", hint: "EQ and output chain" }
+  { id: "audio", label: "Audio", hint: "EQ and output chain" },
+  { id: "online", label: "Online", hint: "Provider and cache" }
 ];
 
 export const TAB_SECTION_IDS: Record<TabId, string> = {
   appearance: "settings-appearance",
   playback: "settings-playback",
   library: "settings-library",
-  audio: "settings-audio"
+  audio: "settings-audio",
+  online: "settings-online"
 };
 
 export const SETTINGS_CENTER_DRAFT_KEY = "settings.centerDraft";

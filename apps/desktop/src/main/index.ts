@@ -1,9 +1,10 @@
-import { app, BrowserWindow, Menu, Tray, dialog, nativeImage, protocol } from "electron";
+import { app, BrowserWindow, Menu, Tray, dialog, ipcMain, nativeImage, protocol } from "electron";
 import { createReadStream } from "node:fs";
 import { access, stat } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
 import { fileURLToPath } from "node:url";
+import { IPC_CHANNELS } from "@aural/contracts";
 import { registerIpcHandlers } from "./ipc";
 import { createAppServices } from "./services";
 
@@ -42,6 +43,8 @@ let isQuitting = false;
 let closePromptOpen = false;
 const preloadPath = path.join(__dirname, "index.mjs");
 const rendererIndexPath = path.join(__dirname, "../dist/index.html");
+const BEFORE_QUIT_FLUSH_CHANNEL = `${IPC_CHANNELS.system}:beforeQuitFlush`;
+const BEFORE_QUIT_FLUSH_ACK_CHANNEL = `${IPC_CHANNELS.system}:beforeQuitFlushAck`;
 
 const toWebStream = (stream: ReturnType<typeof createReadStream>) =>
   Readable.toWeb(stream) as ReadableStream<Uint8Array>;
@@ -85,7 +88,53 @@ const parseRangeHeader = (rangeHeader: string | null, fileSize: number) => {
 
 const registerMediaProtocol = () => {
   protocol.handle(MEDIA_PROTOCOL, async (request) => {
-    const targetPath = new URL(request.url).searchParams.get("path");
+    const parsedUrl = new URL(request.url);
+    const targetPath = parsedUrl.searchParams.get("path");
+    const targetStreamUrl = parsedUrl.searchParams.get("url");
+
+    if (targetStreamUrl) {
+      try {
+        const response = await fetch(targetStreamUrl, {
+          headers: request.headers.get("range")
+            ? {
+                range: request.headers.get("range")!
+              }
+            : undefined
+        });
+
+        if (!response.ok && response.status !== 206) {
+          return new Response("Upstream stream request failed", { status: response.status });
+        }
+
+        const headers = new Headers();
+        const passthroughHeaders = [
+          "accept-ranges",
+          "content-length",
+          "content-range",
+          "content-type",
+          "cache-control"
+        ];
+
+        passthroughHeaders.forEach((headerName) => {
+          const value = response.headers.get(headerName);
+          if (value) {
+            headers.set(headerName, value);
+          }
+        });
+
+        if (!headers.has("content-type")) {
+          headers.set("content-type", "audio/mpeg");
+        }
+
+        return new Response(response.body, {
+          status: response.status,
+          headers
+        });
+      } catch {
+        return new Response("Failed to proxy media stream", { status: 502 });
+      }
+    }
+
     if (!targetPath) {
       return new Response("Missing media path", { status: 400 });
     }
@@ -184,9 +233,46 @@ const hideMainWindowToTray = () => {
   mainWindow.hide();
 };
 
+const requestRendererFlushBeforeQuit = async () => {
+  if (!mainWindow || mainWindow.isDestroyed() || mainWindow.webContents.isDestroyed()) {
+    return;
+  }
+
+  const targetWebContents = mainWindow.webContents;
+
+  await new Promise<void>((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      ipcMain.removeListener(BEFORE_QUIT_FLUSH_ACK_CHANNEL, handleAck);
+      resolve();
+    };
+    const handleAck = (event: Electron.IpcMainEvent) => {
+      if (event.sender !== targetWebContents) {
+        return;
+      }
+      finish();
+    };
+
+    ipcMain.on(BEFORE_QUIT_FLUSH_ACK_CHANNEL, handleAck);
+    targetWebContents.send(BEFORE_QUIT_FLUSH_CHANNEL);
+    setTimeout(finish, 1500);
+  });
+};
+
 const quitApplication = () => {
-  isQuitting = true;
-  app.quit();
+  if (isQuitting) {
+    return;
+  }
+
+  void (async () => {
+    await requestRendererFlushBeforeQuit();
+    isQuitting = true;
+    app.quit();
+  })();
 };
 
 const ensureTray = async () => {

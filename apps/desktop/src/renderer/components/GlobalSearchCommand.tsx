@@ -41,10 +41,12 @@ export const GlobalSearchCommand = () => {
             normalizedQuery={search.normalizedQuery}
             artists={search.artists}
             albums={search.albums}
-            tracks={search.tracks}
+            localTracks={search.localTracks}
+            onlineTracks={search.onlineTracks}
             onArtistSelect={search.handleArtistSelect}
             onAlbumSelect={search.handleAlbumSelect}
-            onTrackSelect={search.handleTrackSelect}
+            onLocalTrackSelect={search.handleLocalTrackSelect}
+            onOnlineTrackSelect={search.handleOnlineTrackSelect}
           />
         </div>
       </PopoverContent>

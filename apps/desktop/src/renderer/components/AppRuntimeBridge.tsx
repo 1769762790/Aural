@@ -3,6 +3,7 @@ import type { ThemeMode } from "@aural/domain";
 import { defaultSettings } from "@renderer/components/settings-catalog";
 import { resolveAccentPalette } from "@renderer/lib/accentPalette";
 import { bridge } from "@renderer/lib/bridge";
+import { flushAllPendingSettings } from "@renderer/lib/settingsPersistence";
 import { useLibraryStore } from "@renderer/stores/libraryStore";
 import { usePlayerStore } from "@renderer/stores/playerStore";
 import { usePreferencesStore } from "@renderer/stores/preferencesStore";
@@ -132,13 +133,21 @@ export const AppRuntimeBridge = () => {
 
   useEffect(() => {
     const persistPlaybackSession = () => {
-      usePlayerStore.getState().persistSession();
+      usePlayerStore.getState().persistSession("flush");
+      void flushAllPendingSettings();
     };
 
     window.addEventListener("beforeunload", persistPlaybackSession);
     return () => {
       window.removeEventListener("beforeunload", persistPlaybackSession);
     };
+  }, []);
+
+  useEffect(() => {
+    return bridge.system.onBeforeQuitFlush(async () => {
+      await usePlayerStore.getState().persistSession("flush");
+      await flushAllPendingSettings();
+    });
   }, []);
 
   return null;

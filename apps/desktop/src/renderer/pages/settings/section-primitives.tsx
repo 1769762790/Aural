@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -157,6 +159,7 @@ export const RangeRow = ({
   step,
   suffix,
   onChange,
+  onCommit,
   live = false
 }: {
   label: string;
@@ -167,6 +170,7 @@ export const RangeRow = ({
   step: number;
   suffix: string;
   onChange: (value: number) => void;
+  onCommit?: () => void;
   live?: boolean;
 }) => (
   <div className="rounded-[24px] border border-border bg-background/55 p-5">
@@ -194,6 +198,7 @@ export const RangeRow = ({
           onChange(next);
         }
       }}
+      onValueCommit={onCommit}
       className="w-full"
     />
   </div>
@@ -244,3 +249,81 @@ export const SelectRow = ({
     </div>
   );
 };
+
+export const TextInputRow = ({
+  label,
+  desc,
+  value,
+  placeholder,
+  onChange,
+  onCommit,
+  disabled = false,
+  actionLabel = "Save",
+  onAction,
+  secondaryActionLabel,
+  onSecondaryAction,
+  live = false
+}: {
+  label: string;
+  desc: string;
+  value: string;
+  placeholder?: string;
+  onChange: (value: string) => void;
+  onCommit: () => void;
+  disabled?: boolean;
+  actionLabel?: string;
+  onAction?: () => void;
+  secondaryActionLabel?: string;
+  onSecondaryAction?: () => void;
+  live?: boolean;
+}) => (
+  <div className="rounded-[24px] border border-border bg-background/55 p-5">
+    <div className="mb-4 space-y-1">
+      <div className="flex items-center gap-2">
+        <p className="text-sm font-semibold text-foreground">{label}</p>
+        {live ? <Badge variant="secondary">Live</Badge> : null}
+      </div>
+      <p className="text-sm leading-6 text-muted-foreground">{desc}</p>
+    </div>
+    <div className="flex flex-col gap-3 sm:flex-row">
+      <Input
+        value={value}
+        placeholder={placeholder}
+        disabled={disabled}
+        className="h-12 min-w-0 rounded-[18px] border-border bg-background/85"
+        onChange={(event) => onChange(event.target.value)}
+        onBlur={onCommit}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter") {
+            return;
+          }
+
+          event.preventDefault();
+          onCommit();
+        }}
+      />
+      <div className="flex gap-3 sm:shrink-0">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={disabled}
+          className="h-12 rounded-[18px] px-5"
+          onClick={onAction ?? onCommit}
+        >
+          {actionLabel}
+        </Button>
+        {secondaryActionLabel ? (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={disabled}
+            className="h-12 rounded-[18px] px-5"
+            onClick={onSecondaryAction}
+          >
+            {secondaryActionLabel}
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  </div>
+);

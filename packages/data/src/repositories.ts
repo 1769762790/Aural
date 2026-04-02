@@ -19,26 +19,40 @@ import {
   upsertScanFolders as upsertScanFoldersRecord
 } from "./repositories/folder.repository";
 import {
-  clearPlayHistory as clearPlayHistoryRecord,
-  getRecentHistory as getRecentHistoryRecord,
-  prunePlayHistory as prunePlayHistoryRecord,
-  recordPlay as recordPlayRecord
-} from "./repositories/history.repository";
-import {
-  addToPlaylist as addToPlaylistRecord,
   createPlaylist as createPlaylistRecord,
   deletePlaylist as deletePlaylistRecord,
-  getPlaylist as getPlaylistRecord,
-  listPlaylists as listPlaylistsRecord,
-  removeFromPlaylist as removeFromPlaylistRecord,
   renamePlaylist as renamePlaylistRecord,
   searchPlaylists as searchPlaylistsRecord
 } from "./repositories/playlist.repository";
+import {
+  addPlayableItemsToPlaylist as addPlayableItemsToPlaylistRecord,
+  clearPlayableHistory as clearPlayableHistoryRecord,
+  findPlayableItemById as findPlayableItemByIdRecord,
+  findPlayableItemByProvider as findPlayableItemByProviderRecord,
+  getDownloadedAsset as getDownloadedAssetRecord,
+  getOnlineArtistDetail as getOnlineArtistDetailRecord,
+  getPlaylistWithPlayableItems as getPlaylistWithPlayableItemsRecord,
+  getRecentPlayableHistory as getRecentPlayableHistoryRecord,
+  listDownloadedAssets as listDownloadedAssetsRecord,
+  listFavoriteItems as listFavoriteItemsRecord,
+  listOnlineArtists as listOnlineArtistsRecord,
+  listPlaylistsWithPlayableItems as listPlaylistsWithPlayableItemsRecord,
+  listPlayableItemsByIds as listPlayableItemsByIdsRecord,
+  prunePlayableHistory as prunePlayableHistoryRecord,
+  recordPlayableItemPlay as recordPlayableItemPlayRecord,
+  removePlayableItem as removePlayableItemRecord,
+  removePlayableItemsFromPlaylist as removePlayableItemsFromPlaylistRecord,
+  syncLocalTrackToPlayableItem as syncLocalTrackToPlayableItemRecord,
+  toggleFavoriteItem as toggleFavoriteItemRecord,
+  upsertDownloadedAsset as upsertDownloadedAssetRecord,
+  upsertPlayableItem as upsertPlayableItemRecord
+} from "./repositories/playable.repository";
 import {
   getAllSettings as getAllSettingsRecord,
   getSetting as getSettingRecord,
   searchAlbums as searchAlbumsRecord,
   searchArtists as searchArtistsRecord,
+  setManySettings as setManySettingsRecord,
   setSetting as setSettingRecord
 } from "./repositories/settings.repository";
 import {
@@ -47,12 +61,10 @@ import {
   findTrackByPath as findTrackByPathRecord,
   findTrackMediaById as findTrackMediaByIdRecord,
   findTracksByHash as findTracksByHashRecord,
-  getFavorites as getFavoritesRecord,
   getOverview as getOverviewRecord,
   listTracks as listTracksRecord,
   markTracksMissing as markTracksMissingRecord,
   searchTracks as searchTracksRecord,
-  toggleFavorite as toggleFavoriteRecord,
   upsertTrack as upsertTrackRecord,
   upsertTracks as upsertTracksRecord
 } from "./repositories/track.repository";
@@ -60,8 +72,11 @@ export type {
   AlbumListQuery,
   ArtistListQuery,
   CreatePlaylistInput,
+  DownloadedAssetRow,
   FolderListQuery,
+  PlayableItemRecordInput,
   PlaylistMutationInput,
+  PlayableItemRow,
   ScanFolderRecord,
   SearchTrackQuery,
   SettingRecord,
@@ -76,9 +91,13 @@ import type {
   ArtistDetail,
   ArtistListQuery,
   ArtistSummary,
+  PlayableArtistDetail,
   CreatePlaylistInput,
+  DownloadedAssetRow,
   FolderListQuery,
   FolderSummary,
+  PlayableItem,
+  PlayableItemRecordInput,
   PlaylistId,
   PlaylistMutationInput,
   PlaylistSummary,
@@ -106,12 +125,14 @@ export class AuralRepository {
   }
 
   upsertTrack(input: TrackRecordInput): Track {
-    return upsertTrackRecord(this.database, input, {
+    const track = upsertTrackRecord(this.database, input, {
       refreshLibrarySummaries: () => this.refreshLibrarySummaries(),
       findTrackById: (id) => this.findTrackById(id),
       findTrackByPath: (path) => this.findTrackByPath(path),
       listTracks: (query) => this.listTracks(query)
     });
+    syncLocalTrackToPlayableItemRecord(this.database, track);
+    return track;
   }
 
   upsertTracks(inputs: TrackRecordInput[]) {
@@ -139,10 +160,14 @@ export class AuralRepository {
   }
 
   deleteTrackById(trackId: TrackId): Track | null {
-    return deleteTrackByIdRecord(this.database, trackId, {
+    const deleted = deleteTrackByIdRecord(this.database, trackId, {
       findTrackById: (id) => this.findTrackById(id),
       refreshLibrarySummaries: () => this.refreshLibrarySummaries()
     });
+    if (deleted) {
+      removePlayableItemRecord(this.database, deleted.id);
+    }
+    return deleted;
   }
 
   listTracks(query: TrackListQuery = {}): Track[] {
@@ -155,6 +180,10 @@ export class AuralRepository {
 
   listArtists(query: ArtistListQuery = {}): ArtistSummary[] {
     return listArtistsRecord(this.database, query);
+  }
+
+  listOnlineArtists(query: ArtistListQuery = {}): ArtistSummary[] {
+    return listOnlineArtistsRecord(this.database, query);
   }
 
   getAlbumDetail(albumId: string): AlbumDetail | null {
@@ -186,43 +215,47 @@ export class AuralRepository {
   }
 
   listPlaylists(): PlaylistSummary[] {
-    return listPlaylistsRecord(this.database);
+    return listPlaylistsWithPlayableItemsRecord(this.database);
   }
 
-  getPlaylist(playlistId: PlaylistId): (PlaylistSummary & { tracks: Track[] }) | null {
-    return getPlaylistRecord(this.database, playlistId, (trackId) => this.findTrackById(trackId));
+  getPlaylist(playlistId: PlaylistId): (PlaylistSummary & { items: PlayableItem[] }) | null {
+    return getPlaylistWithPlayableItemsRecord(this.database, playlistId);
   }
 
-  addToPlaylist(input: PlaylistMutationInput): (PlaylistSummary & { tracks: Track[] }) | null {
-    return addToPlaylistRecord(this.database, input, (playlistId) => this.getPlaylist(playlistId));
+  addToPlaylist(input: PlaylistMutationInput): (PlaylistSummary & { items: PlayableItem[] }) | null {
+    return addPlayableItemsToPlaylistRecord(this.database, input);
   }
 
-  removeFromPlaylist(input: PlaylistMutationInput): (PlaylistSummary & { tracks: Track[] }) | null {
-    return removeFromPlaylistRecord(this.database, input, (playlistId) => this.getPlaylist(playlistId));
+  removeFromPlaylist(input: PlaylistMutationInput): (PlaylistSummary & { items: PlayableItem[] }) | null {
+    return removePlayableItemsFromPlaylistRecord(this.database, input);
   }
 
-  toggleFavorite(trackId: TrackId): boolean {
-    return toggleFavoriteRecord(this.database, trackId, (id) => this.findTrackById(id));
+  toggleFavorite(itemId: string): boolean {
+    return toggleFavoriteItemRecord(this.database, itemId);
   }
 
-  getFavorites(): Track[] {
-    return getFavoritesRecord((query) => this.listTracks(query));
+  getFavorites(mode: "local" | "online" | "all" = "all"): PlayableItem[] {
+    return listFavoriteItemsRecord(this.database, mode);
   }
 
-  recordPlay(trackId: TrackId, sourceType = "library", sourceId = "library"): void {
-    recordPlayRecord(this.database, trackId, sourceType, sourceId);
+  getOnlineArtistDetail(artistId: string): PlayableArtistDetail | null {
+    return getOnlineArtistDetailRecord(this.database, artistId);
   }
 
-  getRecentHistory(limit = 20): Track[] {
-    return getRecentHistoryRecord(this.database, limit);
+  recordPlay(itemId: string, sourceType = "library", sourceId = "library"): void {
+    recordPlayableItemPlayRecord(this.database, itemId, sourceType, sourceId);
+  }
+
+  getRecentHistory(limit = 20, mode: "local" | "online" | "all" = "all"): PlayableItem[] {
+    return getRecentPlayableHistoryRecord(this.database, limit, mode);
   }
 
   prunePlayHistory(maxItems: number): number {
-    return prunePlayHistoryRecord(this.database, maxItems, () => this.clearPlayHistory());
+    return prunePlayableHistoryRecord(this.database, maxItems);
   }
 
   clearPlayHistory(): number {
-    return clearPlayHistoryRecord(this.database);
+    return clearPlayableHistoryRecord(this.database);
   }
 
   listScanFolders(): ScanFolderRecord[] {
@@ -254,12 +287,44 @@ export class AuralRepository {
     return setSettingRecord(this.database, key, value);
   }
 
+  setManySettings(records: Array<{ key: SettingKey; value: SettingValue }>): SettingRecord[] {
+    return setManySettingsRecord(this.database, records);
+  }
+
   getSetting(key: SettingKey): SettingRecord | null {
     return getSettingRecord(this.database, key);
   }
 
   getAllSettings(): SettingRecord[] {
     return getAllSettingsRecord(this.database);
+  }
+
+  upsertPlayableItem(input: PlayableItemRecordInput): PlayableItem {
+    return upsertPlayableItemRecord(this.database, input);
+  }
+
+  findPlayableItemById(itemId: string): PlayableItem | null {
+    return findPlayableItemByIdRecord(this.database, itemId);
+  }
+
+  findPlayableItemByProvider(provider: string, providerItemId: string): PlayableItem | null {
+    return findPlayableItemByProviderRecord(this.database, provider, providerItemId);
+  }
+
+  listPlayableItemsByIds(itemIds: string[]): PlayableItem[] {
+    return listPlayableItemsByIdsRecord(this.database, itemIds);
+  }
+
+  getDownloadedAsset(itemId: string): DownloadedAssetRow | null {
+    return getDownloadedAssetRecord(this.database, itemId);
+  }
+
+  upsertDownloadedAsset(row: DownloadedAssetRow): DownloadedAssetRow {
+    return upsertDownloadedAssetRecord(this.database, row);
+  }
+
+  listDownloadedAssets(): DownloadedAssetRow[] {
+    return listDownloadedAssetsRecord(this.database);
   }
 
   searchTracks(term: string, limit = 50): Track[] {

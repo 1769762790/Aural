@@ -19,7 +19,7 @@ const normalizePlaylistOrder = (database: AuralDatabase, playlistId: string) => 
 export const createPlaylist = (
   database: AuralDatabase,
   input: CreatePlaylistInput,
-  getPlaylistFn: (playlistId: PlaylistId) => (PlaylistSummary & { tracks: Track[] }) | null
+  getPlaylistFn: (playlistId: PlaylistId) => PlaylistSummary | null
 ): PlaylistSummary => {
   const createdAt = nowIso();
   const playlistId = createPlaylistId(`${input.name}:${createdAt}`);
@@ -31,7 +31,7 @@ export const renamePlaylist = (
   database: AuralDatabase,
   playlistId: PlaylistId,
   name: string,
-  getPlaylistFn: (playlistId: PlaylistId) => (PlaylistSummary & { tracks: Track[] }) | null
+  getPlaylistFn: (playlistId: PlaylistId) => PlaylistSummary | null
 ) => {
   const updatedAt = nowIso();
   database.db.prepare("UPDATE playlists SET name = ?, updated_at = ? WHERE id = ?").run(name.trim(), updatedAt, playlistId);
@@ -73,7 +73,7 @@ export const addToPlaylist = (
   getPlaylistFn: (playlistId: PlaylistId) => (PlaylistSummary & { tracks: Track[] }) | null
 ) => {
   const playlist = database.db.prepare("SELECT * FROM playlists WHERE id = ?").get(input.playlistId) as PlaylistRow | undefined;
-  if (!playlist || input.trackIds.length === 0) {
+  if (!playlist || input.itemIds.length === 0) {
     return playlist ? getPlaylistFn(input.playlistId) : null;
   }
 
@@ -90,8 +90,8 @@ export const addToPlaylist = (
       added_at = excluded.added_at
   `);
 
-  for (const trackId of input.trackIds) {
-    insert.run(input.playlistId, trackId, nextIndex, now);
+  for (const itemId of input.itemIds) {
+    insert.run(input.playlistId, itemId, nextIndex, now);
     nextIndex += 1;
   }
 
@@ -104,12 +104,12 @@ export const removeFromPlaylist = (
   input: PlaylistMutationInput,
   getPlaylistFn: (playlistId: PlaylistId) => (PlaylistSummary & { tracks: Track[] }) | null
 ) => {
-  if (input.trackIds.length === 0) {
+  if (input.itemIds.length === 0) {
     return getPlaylistFn(input.playlistId);
   }
 
-  const placeholders = input.trackIds.map(() => "?").join(", ");
-  database.db.prepare(`DELETE FROM playlist_items WHERE playlist_id = ? AND track_id IN (${placeholders})`).run(input.playlistId, ...input.trackIds);
+  const placeholders = input.itemIds.map(() => "?").join(", ");
+  database.db.prepare(`DELETE FROM playlist_items WHERE playlist_id = ? AND track_id IN (${placeholders})`).run(input.playlistId, ...input.itemIds);
   normalizePlaylistOrder(database, input.playlistId);
   database.db.prepare("UPDATE playlists SET updated_at = ? WHERE id = ?").run(nowIso(), input.playlistId);
   return getPlaylistFn(input.playlistId);

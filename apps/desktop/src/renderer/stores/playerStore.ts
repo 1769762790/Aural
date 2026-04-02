@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { SettingKey, SettingValue, Track } from "@aural/domain";
+import type { BrowseMode, PlayableItem, SettingKey, SettingValue, Track } from "@aural/domain";
 import type { LyricsResponse, ReplayGainAnalysis } from "@aural/contracts";
 import {
   addNext,
@@ -17,6 +17,7 @@ import {
   type QueueState
 } from "@aural/player";
 import { bridge } from "@renderer/lib/bridge";
+import { playableItemToTrack, tracksToPlayableItems } from "@renderer/lib/playable";
 import {
   applyChannelBalance,
   applyChannelMode,
@@ -52,14 +53,25 @@ import {
   resolveAutoAdvanceLeadSeconds,
   setAutoAdvanceTrackId
 } from "@renderer/stores/player/playback-runtime";
-import { readPersistedSession, writePersistedSession } from "@renderer/stores/player/session";
+import { readPersistedSession, readPersistedSessions, writePersistedSession } from "@renderer/stores/player/session";
 
 type DomainTrackId = Track["id"];
 const toPlayerTrackId = (trackId: DomainTrackId) => trackId as never;
+const isOnlinePlayableItem = (item: PlayableItem | null | undefined) => item?.source === "online";
+const resolveBrowseModeForItems = (items: PlayableItem[], fallback: BrowseMode = "local"): BrowseMode =>
+  items.some((item) => item.source === "online") ? "online" : fallback;
+const deriveLocalTrackMap = (itemMap: Record<string, PlayableItem>) =>
+  Object.fromEntries(
+    Object.entries(itemMap)
+      .map(([itemId, item]) => [itemId, playableItemToTrack(item)] as const)
+      .filter((entry): entry is [string, Track] => Boolean(entry[1]))
+  );
 
 interface PlayerStoreState {
   queue: QueueState | null;
   playback: PlaybackState;
+  itemMap: Record<string, PlayableItem>;
+  currentItem: PlayableItem | null;
   trackMap: Record<string, Track>;
   currentTrack: Track | null;
   lyrics: LyricsResponse | null;
@@ -81,8 +93,10 @@ interface PlayerStoreState {
   lastVolumeBeforeMute: number;
   runtimeDuckActive: boolean;
   runtimeDuckFactor: number;
+  currentMode: BrowseMode;
   hydrateAudio: () => void;
   applyPreferences: (preferences: Partial<Record<SettingKey, SettingValue>>) => void;
+  playItems: (items: PlayableItem[], startItemId?: string, sourceType?: QueueState["items"][number]["sourceType"], sourceId?: string) => Promise<void>;
   playTracks: (tracks: Track[], startTrackId?: DomainTrackId, sourceType?: QueueState["items"][number]["sourceType"], sourceId?: string) => Promise<void>;
   togglePlay: () => Promise<void>;
   playNext: (trigger?: "auto" | "manual") => Promise<void>;
@@ -100,13 +114,16 @@ interface PlayerStoreState {
   setQueueOpen: (open: boolean) => void;
   addTracksNext: (tracks: Track[]) => void;
   refreshReplayGain: (trackId?: DomainTrackId | null) => Promise<void>;
-  persistSession: () => void;
-  restoreSession: (options?: { autoplay?: boolean }) => Promise<void>;
+  persistSession: (mode?: "scheduled" | "flush") => Promise<void>;
+  restoreSession: (options?: { autoplay?: boolean; mode?: BrowseMode }) => Promise<void>;
+  restoreSessionForMode: (mode: BrowseMode, options?: { autoplay?: boolean }) => Promise<void>;
 }
 
 export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
   queue: null,
   playback: createPlaybackState(),
+  itemMap: {},
+  currentItem: null,
   trackMap: {},
   currentTrack: null,
   lyrics: null,
@@ -128,6 +145,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
   lastVolumeBeforeMute: 0.8,
   runtimeDuckActive: false,
   runtimeDuckFactor: 0.35,
+  currentMode: "local",
   hydrateAudio: () => {
     ensureAudioGraph();
     getAllDecks().forEach((deck) => {
@@ -146,12 +164,12 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     applyChannelMode(get().channelMode);
     applyChannelBalance(get().channelBalance);
     const syncDuration = () => {
-      set((state) => ({
-        playback: setDurationSeconds(
-          state.playback,
-          resolveDurationSeconds(state.currentTrack?.duration ?? state.playback.durationSeconds)
-        )
-      }));
+        set((state) => ({
+          playback: setDurationSeconds(
+            state.playback,
+            resolveDurationSeconds(state.currentItem?.duration ?? state.playback.durationSeconds)
+          )
+        }));
     };
 
     getAllDecks().forEach((deck) => {
@@ -167,21 +185,21 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
         const transitionSeconds = resolveFadeTransitionSeconds(state.fadeEnabled, state.crossfadeSeconds);
         const autoAdvanceLeadSeconds = resolveAutoAdvanceLeadSeconds(state.fadeMode, transitionSeconds);
         const remainingSeconds =
-          resolveElementDurationSeconds(deck.element, state.currentTrack?.duration ?? state.playback.durationSeconds) - deck.element.currentTime;
+          resolveElementDurationSeconds(deck.element, state.currentItem?.duration ?? state.playback.durationSeconds) - deck.element.currentTime;
         if (
           !isTrackSwitchInFlight() &&
-          state.currentTrack &&
+          state.currentItem &&
           transitionSeconds > 0 &&
           remainingSeconds > 0.05 &&
           remainingSeconds <= autoAdvanceLeadSeconds &&
-          getAutoAdvanceTrackId() !== state.currentTrack.id &&
+          getAutoAdvanceTrackId() !== state.currentItem.id &&
           canAutoAdvanceWithFade(state.queue, state.playback.playbackMode, state.shuffleStrategy)
         ) {
-          setAutoAdvanceTrackId(state.currentTrack.id);
+          setAutoAdvanceTrackId(state.currentItem.id);
           void get().playNext("auto");
         }
         if (Math.floor(deck.element.currentTime * 2) % 2 === 0) {
-          get().persistSession();
+          void get().persistSession();
         }
       });
 
@@ -211,7 +229,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
             isPlaying: false
           }
         }));
-        get().persistSession();
+        void get().persistSession("flush");
       });
 
       deck.element.addEventListener("play", () => {
@@ -224,7 +242,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
             isPlaying: true
           }
         }));
-        get().persistSession();
+        void get().persistSession("flush");
       });
 
       deck.element.addEventListener("ended", () => {
@@ -341,40 +359,44 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
       void store.refreshReplayGain();
     }
   },
-  playTracks: async (tracks, startTrackId, sourceType = "library", sourceId = "library") => {
+  playItems: async (items, startItemId, sourceType = "library", sourceId = "library") => {
     const shuffleSeed = get().playback.playbackMode === "shuffle" ? Math.floor(Math.random() * 100_000) : null;
     const nextQueue = createQueue({
-      trackIds: tracks.map((track) => toPlayerTrackId(track.id)),
-      currentTrackId: startTrackId ? toPlayerTrackId(startTrackId) : null,
+      trackIds: items.map((item) => toPlayerTrackId(item.id as DomainTrackId)),
+      currentTrackId: startItemId ? toPlayerTrackId(startItemId as DomainTrackId) : null,
       sourceType,
       sourceId,
       playbackMode: get().playback.playbackMode,
       shuffleSeed
     });
-    const nextTrackMap = Object.fromEntries(tracks.map((track) => [track.id, track]));
-    const currentTrackId =
-      startTrackId ??
-      (nextQueue.currentIndex >= 0 ? (nextQueue.items[nextQueue.currentIndex]?.trackId as unknown as DomainTrackId) : null);
+    const nextItemMap = Object.fromEntries(items.map((item) => [item.id, item]));
+    const nextTrackMap = deriveLocalTrackMap(nextItemMap);
+    const currentItemId =
+      startItemId ??
+      (nextQueue.currentIndex >= 0 ? (nextQueue.items[nextQueue.currentIndex]?.trackId as unknown as string) : null);
     const nextPlaybackBase = createPlaybackState({
       volume: get().playback.volume,
       playbackRate: get().playback.playbackRate,
       playbackMode: get().playback.playbackMode,
       shuffleSeed
     });
-    const optimisticTrack = currentTrackId ? nextTrackMap[currentTrackId] ?? null : null;
+    const optimisticItem = currentItemId ? nextItemMap[currentItemId] ?? null : null;
     const optimisticPlayback =
-      currentTrackId && optimisticTrack
+      currentItemId && optimisticItem
         ? startTrackPlayback(nextPlaybackBase, {
             queue: nextQueue,
-            currentTrackId: toPlayerTrackId(optimisticTrack.id),
-            durationSeconds: optimisticTrack.duration
+            currentTrackId: toPlayerTrackId(optimisticItem.id as DomainTrackId),
+            durationSeconds: optimisticItem.duration
           })
         : nextPlaybackBase;
 
     set({
       queue: nextQueue,
+      itemMap: nextItemMap,
+      currentItem: optimisticItem,
       trackMap: nextTrackMap,
-      currentTrack: optimisticTrack,
+      currentTrack: playableItemToTrack(optimisticItem),
+      currentMode: resolveBrowseModeForItems(items),
       lyrics: null,
       playback: optimisticPlayback,
       shuffleHistory:
@@ -387,8 +409,8 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     const loaded = await loadTrack(
       nextQueue,
       nextPlaybackBase,
-      nextTrackMap,
-      currentTrackId,
+      nextItemMap,
+      currentItemId,
       get().isMuted,
       get().runtimeDuckActive,
       get().runtimeDuckFactor,
@@ -400,17 +422,21 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
 
     set({
       queue: nextQueue,
+      itemMap: nextItemMap,
       trackMap: nextTrackMap,
-      currentTrack: loaded.currentTrack,
+      currentItem: loaded.currentItem,
+      currentTrack: playableItemToTrack(loaded.currentItem),
       lyrics: loaded.lyrics,
       playback: loaded.playback
     });
-    void get().refreshReplayGain(loaded.currentTrack?.id ?? null);
-    get().persistSession();
+    void get().refreshReplayGain(loaded.currentItem?.localTrackId ?? null);
+    void get().persistSession("flush");
   },
+  playTracks: async (tracks, startTrackId, sourceType = "library", sourceId = "library") =>
+    get().playItems(tracksToPlayableItems(tracks), startTrackId, sourceType, sourceId),
   togglePlay: async () => {
     const state = get();
-    if (!state.currentTrack) {
+    if (!state.currentItem) {
       return;
     }
 
@@ -500,15 +526,15 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     }
     if (!nextPlayback.currentTrackId) {
       getAllDecks().forEach((deck) => deck.element.pause());
-      set({ queue: nextQueue, playback: nextPlayback, currentTrack: null, lyrics: null });
-      get().persistSession();
+      set({ queue: nextQueue, playback: nextPlayback, currentItem: null, currentTrack: null, lyrics: null });
+      void get().persistSession("flush");
       return;
     }
 
     const loaded = await loadTrack(
       nextQueue,
       nextPlayback,
-      get().trackMap,
+      get().itemMap,
       nextPlayback.currentTrackId as unknown as string,
       get().isMuted,
       get().runtimeDuckActive,
@@ -521,13 +547,14 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     set({
       queue: nextQueue,
       playback: loaded.playback,
-      currentTrack: loaded.currentTrack,
+      currentItem: loaded.currentItem,
+      currentTrack: playableItemToTrack(loaded.currentItem),
       lyrics: loaded.lyrics,
       shuffleHistory: nextShuffleHistory,
       shuffleFuture: nextShuffleFuture
     });
-    void get().refreshReplayGain(loaded.currentTrack?.id ?? null);
-    get().persistSession();
+    void get().refreshReplayGain(loaded.currentItem?.localTrackId ?? null);
+    void get().persistSession("flush");
   },
   playPrevious: async (trigger = "manual") => {
     const queue = get().queue;
@@ -570,15 +597,15 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     }
     if (!nextPlayback.currentTrackId) {
       getAllDecks().forEach((deck) => deck.element.pause());
-      set({ queue: nextQueue, playback: nextPlayback, currentTrack: null, lyrics: null });
-      get().persistSession();
+      set({ queue: nextQueue, playback: nextPlayback, currentItem: null, currentTrack: null, lyrics: null });
+      void get().persistSession("flush");
       return;
     }
 
     const loaded = await loadTrack(
       nextQueue,
       nextPlayback,
-      get().trackMap,
+      get().itemMap,
       nextPlayback.currentTrackId as unknown as string,
       get().isMuted,
       get().runtimeDuckActive,
@@ -591,20 +618,21 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     set({
       queue: nextQueue,
       playback: loaded.playback,
-      currentTrack: loaded.currentTrack,
+      currentItem: loaded.currentItem,
+      currentTrack: playableItemToTrack(loaded.currentItem),
       lyrics: loaded.lyrics,
       shuffleHistory: nextShuffleHistory,
       shuffleFuture: nextShuffleFuture
     });
-    void get().refreshReplayGain(loaded.currentTrack?.id ?? null);
-    get().persistSession();
+    void get().refreshReplayGain(loaded.currentItem?.localTrackId ?? null);
+    void get().persistSession("flush");
   },
   seekTo: (seconds) => {
     getActiveAudioElement().currentTime = seconds;
     set((state) => ({
       playback: setProgressSeconds(state.playback, seconds)
     }));
-    get().persistSession();
+    void get().persistSession("flush");
   },
   setVolumeLevel: (volume) => {
     const state = get();
@@ -621,7 +649,6 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
       lastVolumeBeforeMute: volume > 0 ? volume : state.lastVolumeBeforeMute
     }));
     persistPlayerVolumePreference(volume);
-    get().persistSession();
   },
   setPlaybackRateLevel: (rate) => {
     const clampedRate = Math.min(3, Math.max(0.5, rate));
@@ -631,7 +658,6 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     set((state) => ({
       playback: setPlaybackRate(state.playback, clampedRate)
     }));
-    get().persistSession();
   },
   toggleMute: () => {
     set((state) => {
@@ -668,7 +694,6 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     if (!latestState.isMuted) {
       persistPlayerVolumePreference(latestState.playback.volume);
     }
-    get().persistSession();
   },
   setRuntimeDuck: (active) => {
     set((state) => {
@@ -711,7 +736,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
           : [],
       shuffleFuture: []
     }));
-    get().persistSession();
+    void get().persistSession("flush");
   },
   clearPlayback: () => {
     getAllDecks().forEach((deck) => resetDeck(deck, { clearSource: true }));
@@ -720,6 +745,8 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
 
     set((state) => ({
       queue: null,
+      itemMap: {},
+      currentItem: null,
       trackMap: {},
       currentTrack: null,
       lyrics: null,
@@ -735,17 +762,23 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
         shuffleSeed: state.playback.playbackMode === "shuffle" ? state.playback.shuffleSeed : null
       })
     }));
-    void writePersistedSession(null);
+    void writePersistedSession(get().currentMode, null, get().currentMode, { flush: true });
   },
   syncTrackInState: (track) => {
+    const playableItem = tracksToPlayableItems([track])[0];
     set((state) => ({
+      itemMap: {
+        ...state.itemMap,
+        [track.id]: playableItem
+      },
       trackMap: {
         ...state.trackMap,
         [track.id]: track
       },
+      currentItem: state.currentItem?.id === track.id ? playableItem : state.currentItem,
       currentTrack: state.currentTrack?.id === track.id ? track : state.currentTrack
     }));
-    get().persistSession();
+    void get().persistSession();
   },
   removeTrackFromQueue: (trackId) => {
     const state = get();
@@ -758,12 +791,14 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
       return;
     }
 
+    const nextItemMap = { ...state.itemMap };
+    delete nextItemMap[trackId];
     const nextTrackMap = { ...state.trackMap };
     delete nextTrackMap[trackId];
 
-    if (state.currentTrack?.id === trackId) {
-      set({ trackMap: nextTrackMap });
-      get().persistSession();
+    if (state.currentItem?.id === trackId) {
+      set({ itemMap: nextItemMap, trackMap: nextTrackMap, currentItem: null, currentTrack: null });
+      void get().persistSession("flush");
       return;
     }
 
@@ -777,11 +812,12 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     if (!nextItems.length) {
       set({
         queue: null,
+        itemMap: nextItemMap,
         trackMap: nextTrackMap,
         shuffleHistory: [],
         shuffleFuture: []
       });
-      get().persistSession();
+      void get().persistSession("flush");
       return;
     }
 
@@ -797,6 +833,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
 
     set((current) => ({
       queue: nextQueue,
+      itemMap: nextItemMap,
       trackMap: nextTrackMap,
       playback: {
         ...current.playback,
@@ -805,7 +842,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
       shuffleHistory: [],
       shuffleFuture: []
     }));
-    get().persistSession();
+    void get().persistSession("flush");
   },
   toggleQueue: () => {
     set((state) => ({
@@ -822,17 +859,22 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     if (!queue) {
       return;
     }
+    const items = tracksToPlayableItems(tracks);
     const nextQueue = addNext(queue, {
-      trackIds: tracks.map((track) => toPlayerTrackId(track.id))
+      trackIds: items.map((item) => toPlayerTrackId(item.id as DomainTrackId))
     });
     set((state) => ({
       queue: nextQueue,
+      itemMap: {
+        ...state.itemMap,
+        ...Object.fromEntries(items.map((item) => [item.id, item]))
+      },
       trackMap: {
         ...state.trackMap,
         ...Object.fromEntries(tracks.map((track) => [track.id, track]))
       }
     }));
-    get().persistSession();
+    void get().persistSession("flush");
   },
   refreshReplayGain: async (trackId) => {
     const targetTrackId = trackId ?? get().currentTrack?.id ?? null;
@@ -867,7 +909,7 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
 
     const analysis = await bridge.audio.analyzeReplayGain(targetTrackId);
     const latest = get();
-    if (latest.currentTrack?.id !== targetTrackId || !latest.replayGainEnabled) {
+    if (latest.currentItem?.localTrackId !== targetTrackId || !latest.replayGainEnabled) {
       return;
     }
 
@@ -890,41 +932,54 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
       );
     }
   },
-  persistSession: () => {
+  persistSession: async (mode = "scheduled") => {
     const state = get();
-    if (!state.queue || !state.currentTrack) {
-      void writePersistedSession(null);
+    if (!state.queue || !state.currentItem) {
+      await writePersistedSession(state.currentMode, null, state.currentMode, {
+        flush: mode === "flush"
+      });
       return;
     }
 
-    void writePersistedSession({
+    await writePersistedSession(state.currentMode, {
       queue: state.queue,
-      tracks: Object.values(state.trackMap),
-      currentTrackId: state.currentTrack.id,
+      items: Object.values(state.itemMap),
+      currentItemId: state.currentItem.id,
       progressSeconds: state.playback.progressSeconds,
       playbackMode: state.playback.playbackMode,
       shuffleSeed: state.playback.shuffleSeed,
       shuffleHistory: state.shuffleHistory,
       shuffleFuture: state.shuffleFuture
+    }, state.currentMode, {
+      flush: mode === "flush"
     });
   },
   restoreSession: async (options = {}) => {
-    const session = await readPersistedSession();
+    const requestedMode = options.mode;
+    const sessionEnvelope = await readPersistedSessions();
+    const session = requestedMode
+      ? requestedMode === "online"
+        ? sessionEnvelope?.onlineSession ?? null
+        : sessionEnvelope?.localSession ?? null
+      : await readPersistedSession();
     if (!session) {
       return;
     }
 
-    const trackMap = Object.fromEntries(session.tracks.map((track) => [track.id, track]));
-    const currentTrack = session.currentTrackId ? trackMap[session.currentTrackId] ?? null : null;
-    if (!currentTrack) {
-      void writePersistedSession(null);
+    const itemMap = Object.fromEntries(session.items.map((item) => [item.id, item]));
+    const trackMap = deriveLocalTrackMap(itemMap);
+    const currentItem = session.currentItemId ? itemMap[session.currentItemId] ?? null : null;
+    if (!currentItem) {
+      const modeToClear = requestedMode ?? sessionEnvelope?.lastMode ?? "local";
+      void writePersistedSession(modeToClear, null, modeToClear, { flush: true });
       return;
     }
 
     const autoplay = options.autoplay ?? false;
+    const resolvedMode = requestedMode ?? resolveBrowseModeForItems(session.items, sessionEnvelope?.lastMode ?? "local");
     const nextPlaybackBase = createPlaybackState({
       queueId: session.queue.queueId,
-      currentTrackId: toPlayerTrackId(currentTrack.id),
+      currentTrackId: toPlayerTrackId(currentItem.id as DomainTrackId),
       currentIndex: session.queue.currentIndex,
       volume: get().playback.volume,
       playbackRate: get().playback.playbackRate,
@@ -934,15 +989,18 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
 
     set({
       queue: session.queue,
+      itemMap,
       trackMap,
-      currentTrack,
+      currentItem,
+      currentTrack: playableItemToTrack(currentItem),
+      currentMode: resolvedMode,
       lyrics: null,
       playback: {
         ...startTrackPlayback(nextPlaybackBase, {
           queue: session.queue,
-          currentTrackId: toPlayerTrackId(currentTrack.id),
+          currentTrackId: toPlayerTrackId(currentItem.id as DomainTrackId),
           progressSeconds: session.progressSeconds,
-          durationSeconds: currentTrack.duration
+          durationSeconds: currentItem.duration
         }),
         isPlaying: autoplay,
         progressSeconds: session.progressSeconds
@@ -954,8 +1012,8 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
     const loaded = await loadTrack(
       session.queue,
       nextPlaybackBase,
-      trackMap,
-      currentTrack.id,
+      itemMap,
+      currentItem.id,
       get().isMuted,
       get().runtimeDuckActive,
       get().runtimeDuckFactor,
@@ -973,15 +1031,24 @@ export const usePlayerStore = create<PlayerStoreState>((set, get) => ({
 
     set({
       queue: session.queue,
+      itemMap,
       trackMap,
-      currentTrack: loaded.currentTrack,
+      currentItem: loaded.currentItem,
+      currentTrack: playableItemToTrack(loaded.currentItem),
+      currentMode: resolvedMode,
       lyrics: loaded.lyrics,
       playback: loaded.playback,
       shuffleHistory: session.shuffleHistory,
       shuffleFuture: session.shuffleFuture
     });
-    void get().refreshReplayGain(loaded.currentTrack?.id ?? null);
-    get().persistSession();
+    void get().refreshReplayGain(loaded.currentItem?.localTrackId ?? null);
+    void get().persistSession();
+  },
+  restoreSessionForMode: async (mode, options = {}) => {
+    await get().restoreSession({
+      ...options,
+      mode
+    });
   }
 }));
 

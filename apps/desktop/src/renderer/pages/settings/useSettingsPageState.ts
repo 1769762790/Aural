@@ -4,6 +4,7 @@ import { toast } from "@/components/ui/sonner";
 import { useAsyncResource } from "@renderer/hooks/useAsyncResource";
 import { getAccentLabel, isCustomAccentValue, normalizeAccentHex, presetAccentOptions } from "@renderer/lib/accentPalette";
 import { bridge } from "@renderer/lib/bridge";
+import { flushPendingSettingsForKeys, persistSetting } from "@renderer/lib/settingsPersistence";
 import {
   type Draft,
   type MediaDevicesWithOutputSelection,
@@ -44,7 +45,7 @@ export const useSettingsPageState = ({
 }: UseSettingsPageStateArgs) => {
   const pageRef = useRef<HTMLDivElement | null>(null);
   const stickyTabsRef = useRef<HTMLDivElement | null>(null);
-  const sectionRefs = useRef<SectionRefs>({ playback: null, library: null, audio: null, appearance: null });
+  const sectionRefs = useRef<SectionRefs>({ playback: null, library: null, audio: null, appearance: null, online: null });
   const tabScrollLockRef = useRef<{ target: TabId | null; timer: number | null }>({ target: null, timer: null });
   const draftHydratedRef = useRef(false);
   const customAccentsHydratedRef = useRef(false);
@@ -61,6 +62,8 @@ export const useSettingsPageState = ({
     { label: "System default", value: "default" }
   ]);
   const [outputDeviceSupported, setOutputDeviceSupported] = useState(false);
+  const [onlineDownloadDirectoryDraft, setOnlineDownloadDirectoryDraft] = useState("");
+  const [onlineDefaultDownloadDirectory, setOnlineDefaultDownloadDirectory] = useState("");
 
   const folders = useAsyncResource(
     () => bridge.library.listFolders({ sortBy: "path", sortDirection: "asc" }),
@@ -96,7 +99,7 @@ export const useSettingsPageState = ({
       draftHydratedRef.current = true;
 
       if (legacy) {
-        void bridge.settings.setSetting(SETTINGS_CENTER_DRAFT_KEY, JSON.stringify(nextDraft));
+        void persistSetting(SETTINGS_CENTER_DRAFT_KEY, JSON.stringify(nextDraft));
         try {
           window.localStorage.removeItem(LEGACY_DRAFT_KEY);
         } catch {
@@ -115,13 +118,7 @@ export const useSettingsPageState = ({
       return;
     }
 
-    const timer = window.setTimeout(() => {
-      void bridge.settings.setSetting(SETTINGS_CENTER_DRAFT_KEY, JSON.stringify(draft));
-    }, 120);
-
-    return () => {
-      window.clearTimeout(timer);
-    };
+    void persistSetting(SETTINGS_CENTER_DRAFT_KEY, JSON.stringify(draft));
   }, [draft]);
 
   useEffect(() => {
@@ -145,7 +142,7 @@ export const useSettingsPageState = ({
       customAccentsHydratedRef.current = true;
 
       if (legacy) {
-        void bridge.settings.setSetting(CUSTOM_ACCENTS_SETTING_KEY, JSON.stringify(nextCustomAccents));
+        void persistSetting(CUSTOM_ACCENTS_SETTING_KEY, JSON.stringify(nextCustomAccents));
         try {
           window.localStorage.removeItem(LEGACY_CUSTOM_ACCENTS_KEY);
         } catch {
@@ -164,14 +161,16 @@ export const useSettingsPageState = ({
       return;
     }
 
-    const timer = window.setTimeout(() => {
-      void bridge.settings.setSetting(CUSTOM_ACCENTS_SETTING_KEY, JSON.stringify(customAccents));
-    }, 120);
-
-    return () => {
-      window.clearTimeout(timer);
-    };
+    void persistSetting(CUSTOM_ACCENTS_SETTING_KEY, JSON.stringify(customAccents));
   }, [customAccents]);
+
+  useEffect(() => {
+    return () => {
+      void flushPendingSettingsForKeys([SETTINGS_CENTER_DRAFT_KEY, CUSTOM_ACCENTS_SETTING_KEY]).catch(() => {
+        // Ignore cleanup flush failures and rely on the next lifecycle flush.
+      });
+    };
+  }, []);
 
   useEffect(() => {
     const supported = typeof (HTMLMediaElement.prototype as HTMLMediaElement & { setSinkId?: unknown }).setSinkId === "function";
@@ -226,6 +225,26 @@ export const useSettingsPageState = ({
     return () => {
       cancelled = true;
       navigator.mediaDevices.removeEventListener("devicechange", enumerateOutputDevices);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void bridge.online.getDefaultDownloadDirectory().then((targetPath) => {
+      if (cancelled) {
+        return;
+      }
+
+      setOnlineDefaultDownloadDirectory(targetPath);
+    }).catch(() => {
+      if (!cancelled) {
+        setOnlineDefaultDownloadDirectory("");
+      }
+    });
+
+    return () => {
+      cancelled = true;
     };
   }, []);
 
@@ -335,6 +354,11 @@ export const useSettingsPageState = ({
   };
 
   const setPersistent = (key: SettingKey, value: SettingValue) => void updateSetting(key, value);
+  const flushPersistent = (key: SettingKey) => {
+    void flushPendingSettingsForKeys([key]).catch(() => {
+      // Ignore flush failures and let the next lifecycle flush retry.
+    });
+  };
 
   const scrollTo = (id: TabId) => {
     const root = getScrollRoot();
@@ -476,6 +500,10 @@ export const useSettingsPageState = ({
   const outputDeviceId = outputDeviceIdValue.trim() || "default";
   const channelModeValue = String(getValue("player.channelMode") ?? "stereo");
   const channelMode: "stereo" | "mono" = channelModeValue === "mono" ? "mono" : "stereo";
+  const onlineDownloadDirectoryValue = getValue("online.downloadDirectory");
+  const onlineDownloadDirectory = typeof onlineDownloadDirectoryValue === "string" ? onlineDownloadDirectoryValue.trim() : "";
+  const onlineEffectiveDownloadDirectory = onlineDownloadDirectory || onlineDefaultDownloadDirectory;
+  const onlinePreferDownloadedCopy = getValue("online.preferDownloadedCopy") !== false;
   const outputDeviceOptions = useMemo(() => {
     if (systemOutputDevices.some((option) => option.value === outputDeviceId)) {
       return systemOutputDevices;
@@ -497,6 +525,10 @@ export const useSettingsPageState = ({
     return [...presetAccentOptions.map((item) => ({ ...item, isCustom: false })), ...customOptions];
   }, [customAccents]);
   const activeAccentLabel = getAccentLabel(accent);
+
+  useEffect(() => {
+    setOnlineDownloadDirectoryDraft((current) => (current === onlineDownloadDirectory ? current : onlineDownloadDirectory));
+  }, [onlineDownloadDirectory]);
 
   useEffect(() => {
     if (!isCustomAccentValue(accent)) {
@@ -558,6 +590,47 @@ export const useSettingsPageState = ({
     await updateSetting("player.outputDeviceId", resolvedValue);
   };
 
+  const commitOnlineDownloadDirectory = () => {
+    const normalized = onlineDownloadDirectoryDraft.trim();
+    if (normalized === onlineDownloadDirectory) {
+      return;
+    }
+
+    setPersistent("online.downloadDirectory", normalized || null);
+  };
+
+  const chooseOnlineDownloadDirectory = async () => {
+    try {
+      const picked = await bridge.system.chooseFolders();
+      const nextDirectory = picked[0]?.trim();
+      if (!nextDirectory) {
+        return;
+      }
+
+      setOnlineDownloadDirectoryDraft(nextDirectory);
+      await updateSetting("online.downloadDirectory", nextDirectory);
+      toast.success("Online download directory updated.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error(`Failed to update online download directory: ${message}`);
+    }
+  };
+
+  const openOnlineDownloadDirectory = async () => {
+    const targetDirectory = onlineEffectiveDownloadDirectory.trim();
+    if (!targetDirectory) {
+      toast.error("No effective online download directory is available yet.");
+      return;
+    }
+
+    try {
+      await bridge.system.openPath(targetDirectory);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error(`Failed to open online download directory: ${message}`);
+    }
+  };
+
   return {
     pageRef,
     stickyTabsRef,
@@ -572,6 +645,11 @@ export const useSettingsPageState = ({
     isRemovingFolderPath,
     folderPathToConfirmRemoval,
     outputDeviceSupported,
+    onlineDownloadDirectory,
+    onlineDownloadDirectoryDraft,
+    onlineDefaultDownloadDirectory,
+    onlineEffectiveDownloadDirectory,
+    onlinePreferDownloadedCopy,
     folders,
     appearanceMode,
     followSystemTheme,
@@ -612,10 +690,12 @@ export const useSettingsPageState = ({
     activeAccentLabel,
     setDraftValue,
     setPersistent,
+    flushPersistent,
     setIsAccentPickerOpen,
     setCustomAccentDraft,
     setBlacklistInput,
     setFolderPathToConfirmRemoval,
+    setOnlineDownloadDirectoryDraft,
     scrollTo,
     addFolders,
     rescanFolders,
@@ -623,6 +703,9 @@ export const useSettingsPageState = ({
     saveCustomAccent,
     removeCustomAccent,
     handleOutputDeviceChange,
+    commitOnlineDownloadDirectory,
+    chooseOnlineDownloadDirectory,
+    openOnlineDownloadDirectory,
     folderNote
   };
 };

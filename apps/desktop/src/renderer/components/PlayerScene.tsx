@@ -4,7 +4,7 @@ import { ChevronDown, Music4 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { toFileUrl } from "@renderer/lib/fileUrl";
+import { resolvePlayableCoverUrl } from "@renderer/lib/playable";
 import { PlayerSceneArtworkPanel } from "@renderer/components/player-scene/PlayerSceneArtworkPanel";
 import { PlayerSceneDock } from "@renderer/components/player-scene/PlayerSceneDock";
 import { buildQualityBadges } from "@renderer/components/player-scene/playerScene.utils";
@@ -17,7 +17,7 @@ import { usePlayerStore } from "@renderer/stores/playerStore";
 
 export const PlayerScene = ({ onClose, className }: PlayerSceneProps) => {
   const navigate = useNavigate();
-  const currentTrack = usePlayerStore((state) => state.currentTrack);
+  const currentItem = usePlayerStore((state) => state.currentItem);
   const lyrics = usePlayerStore((state) => state.lyrics);
   const playback = usePlayerStore((state) => state.playback);
   const togglePlay = usePlayerStore((state) => state.togglePlay);
@@ -38,11 +38,11 @@ export const PlayerScene = ({ onClose, className }: PlayerSceneProps) => {
   );
 
   const lyricsViewModel = usePlayerLyricsViewModel(
-    currentTrack ? lyrics : null,
+    currentItem ? lyrics : null,
     playback.progressSeconds,
     lyricsEnabled
   );
-  const coverUrl = currentTrack?.coverPath ? toFileUrl(currentTrack.coverPath) : null;
+  const coverUrl = resolvePlayableCoverUrl(currentItem);
   const coverTheme = usePlayerCoverTheme(coverUrl, dynamicCoverGradientEnabled, resolvedTheme);
 
   useEffect(() => {
@@ -65,7 +65,7 @@ export const PlayerScene = ({ onClose, className }: PlayerSceneProps) => {
     void navigate("/");
   };
 
-  if (!currentTrack) {
+  if (!currentItem) {
     return (
       <div className={cn("space-y-6", className)}>
         <Card className="border-border bg-card/82">
@@ -89,14 +89,14 @@ export const PlayerScene = ({ onClose, className }: PlayerSceneProps) => {
     );
   }
 
-  const coverBackground = currentTrack.coverPath
+  const coverBackground = coverUrl
     ? { backgroundImage: `url("${coverUrl}")` }
     : {
         backgroundImage:
           "linear-gradient(145deg, rgba(255,255,255,0.08), rgba(125,89,255,0.42), rgba(75,115,255,0.28), rgba(248,184,95,0.12))"
       };
 
-  const useDynamicCoverGradient = Boolean(currentTrack.coverPath && dynamicCoverGradientEnabled);
+  const useDynamicCoverGradient = Boolean(coverUrl && dynamicCoverGradientEnabled);
   const ambientGradientBackground = useDynamicCoverGradient
     ? {
         backgroundImage: `
@@ -117,9 +117,9 @@ export const PlayerScene = ({ onClose, className }: PlayerSceneProps) => {
       : null;
 
   const qualityBadges = buildQualityBadges(
-    currentTrack.format,
-    currentTrack.bitrate,
-    currentTrack.sampleRate
+    currentItem.format,
+    currentItem.bitrate,
+    currentItem.sampleRate
   );
 
   return (
@@ -189,7 +189,7 @@ export const PlayerScene = ({ onClose, className }: PlayerSceneProps) => {
       <div className="relative mx-auto flex h-full min-h-full w-full max-w-[1920px] flex-col px-8 pb-[190px] pt-5 lg:px-12 lg:pb-[190px] lg:pt-6 2xl:px-16">
         <div className="grid flex-1 items-start gap-10 pt-[calc(var(--titlebar-area-height)+34px)] md:grid-cols-[minmax(320px,460px)_minmax(0,1fr)] md:gap-14 xl:grid-cols-[minmax(360px,500px)_minmax(0,1fr)] xl:gap-20 2xl:gap-24">
           <PlayerSceneArtworkPanel
-            track={currentTrack}
+            track={currentItem}
             coverBackground={coverBackground}
             qualityBadges={qualityBadges}
             isPlaying={playback.isPlaying}
@@ -203,7 +203,7 @@ export const PlayerScene = ({ onClose, className }: PlayerSceneProps) => {
         </div>
 
         <PlayerSceneDock
-          track={currentTrack}
+          track={currentItem}
           playback={playback}
           queueOpen={queueOpen}
           motionEnabled={motionEnabled}

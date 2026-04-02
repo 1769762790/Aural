@@ -3,7 +3,12 @@ import type {
   AlbumSummary,
   ArtistDetail,
   ArtistSummary,
+  PlayableArtistDetail,
+  BrowseMode,
+  PlaybackAsset,
+  PlayableItem,
   FolderSummary,
+  OnlineProviderId,
   PlaylistSummary,
   SearchScope,
   SearchTrackHit,
@@ -19,6 +24,7 @@ export const IPC_CHANNELS = {
   library: "aural:library",
   search: "aural:search",
   collection: "aural:collection",
+  online: "aural:online",
   audio: "aural:audio",
   settings: "aural:settings",
   lyrics: "aural:lyrics"
@@ -89,6 +95,92 @@ export interface ArtistListQuery {
   sortDirection?: SortDirection;
 }
 
+export interface OnlineArtistListQuery {
+  area?: number;
+  type?: number;
+  initial?: string | number;
+  offset?: number;
+  limit?: number;
+}
+
+export interface OnlinePlaylistRecommendation {
+  id: string;
+  title: string;
+  subtitle: string;
+  coverUrl: string | null;
+  trackCount: number;
+}
+
+export interface OnlinePlaylistCategory {
+  name: string;
+  group: string | null;
+  hot: boolean;
+}
+
+export interface OnlineAlbumListQuery {
+  area?: "ALL" | "ZH" | "EA" | "KR" | "JP";
+  offset?: number;
+  limit?: number;
+}
+
+export interface OnlineAlbumSummary {
+  id: string;
+  title: string;
+  artist: string;
+  subtitle: string;
+  coverUrl: string | null;
+  publishTime: string | null;
+  year: number | null;
+}
+
+export interface OnlineAlbumDetail {
+  id: string;
+  title: string;
+  artist: string;
+  description: string;
+  coverUrl: string | null;
+  publishTime: string | null;
+  year: number | null;
+  company: string | null;
+  items: PlayableItem[];
+  trackCount: number;
+  totalDurationSeconds: number;
+}
+
+export interface OnlineChartPreviewEntry {
+  rank: number;
+  title: string;
+  artist: string;
+}
+
+export interface OnlineChartSummary {
+  id: string;
+  title: string;
+  badge: string;
+  subtitle: string;
+  coverUrl: string | null;
+  updateFrequency: string | null;
+  trackCount: number;
+  preview: OnlineChartPreviewEntry[];
+}
+
+export interface OnlineChartsOverview {
+  core: OnlineChartSummary[];
+  genre: OnlineChartSummary[];
+  total: number;
+}
+
+export interface OnlinePlaylistDetail {
+  id: string;
+  name: string;
+  description: string;
+  coverUrl: string | null;
+  items: PlayableItem[];
+  trackCount: number;
+  totalDurationSeconds: number;
+  updatedAt: string | null;
+}
+
 export interface FolderListQuery {
   sortBy?: "path" | "trackCount";
   sortDirection?: SortDirection;
@@ -109,7 +201,7 @@ export interface SearchResults {
 }
 
 export interface PlaylistDetail extends PlaylistSummary {
-  tracks: Track[];
+  items: PlayableItem[];
 }
 
 export interface CreatePlaylistInput {
@@ -118,7 +210,7 @@ export interface CreatePlaylistInput {
 
 export interface PlaylistMutationInput {
   playlistId: string;
-  trackIds: TrackId[];
+  itemIds: string[];
 }
 
 export interface SettingRecord {
@@ -126,9 +218,13 @@ export interface SettingRecord {
   value: SettingValue;
 }
 
+export interface BeforeQuitFlushListener {
+  (): void | Promise<void>;
+}
+
 export interface LyricsResponse {
-  trackId: TrackId;
-  source: "lrc" | "embedded" | "none";
+  trackId: string;
+  source: "lrc" | "embedded" | "remote" | "none";
   lines: Array<{
     at: number;
     text: string;
@@ -147,10 +243,26 @@ export interface ReplayGainAnalysis {
   unclampedMultiplier: number;
 }
 
+export interface OnlineSearchQuery {
+  term: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface DownloadedAssetRecord {
+  itemId: string;
+  provider: OnlineProviderId;
+  providerItemId: string;
+  localPath: string;
+  status: "ready" | "failed" | "pending";
+  downloadedAt: string | null;
+}
+
 export interface SystemApi {
   chooseFolders(): Promise<string[]>;
   openPath(path: string): Promise<void>;
   setTitleBarTheme(theme: "light" | "dark"): Promise<void>;
+  onBeforeQuitFlush(listener: BeforeQuitFlushListener): () => void;
 }
 
 export interface LibraryApi {
@@ -184,16 +296,17 @@ export interface CollectionApi {
   deletePlaylist(playlistId: string): Promise<boolean>;
   addToPlaylist(input: PlaylistMutationInput): Promise<PlaylistDetail | null>;
   removeFromPlaylist(input: PlaylistMutationInput): Promise<PlaylistDetail | null>;
-  toggleFavorite(trackId: TrackId): Promise<boolean>;
-  getFavorites(): Promise<Track[]>;
-  getRecentHistory(limit?: number): Promise<Track[]>;
-  recordPlay(trackId: TrackId): Promise<void>;
+  toggleFavorite(itemId: string): Promise<boolean>;
+  getFavorites(mode?: BrowseMode | "all"): Promise<PlayableItem[]>;
+  getRecentHistory(limit?: number, mode?: BrowseMode | "all"): Promise<PlayableItem[]>;
+  recordPlay(itemId: string, sourceType?: string, sourceId?: string): Promise<void>;
 }
 
 export interface SettingsApi {
   getAll(): Promise<SettingRecord[]>;
   getSetting(key: SettingKey): Promise<SettingValue | null>;
   setSetting(key: SettingKey, value: SettingValue): Promise<SettingRecord>;
+  setManySettings(records: SettingRecord[]): Promise<SettingRecord[]>;
 }
 
 export interface AudioApi {
@@ -201,7 +314,28 @@ export interface AudioApi {
 }
 
 export interface LyricsApi {
-  getLyrics(trackId: TrackId): Promise<LyricsResponse>;
+  getLyrics(trackId: string): Promise<LyricsResponse>;
+}
+
+export interface OnlineApi {
+  searchTracks(query: OnlineSearchQuery): Promise<PlayableItem[]>;
+  listArtists(query?: OnlineArtistListQuery): Promise<ArtistSummary[]>;
+  getArtistDetail(artistId: string): Promise<PlayableArtistDetail | null>;
+  listAlbums(query?: OnlineAlbumListQuery): Promise<OnlineAlbumSummary[]>;
+  getAlbumDetail(albumId: string): Promise<OnlineAlbumDetail | null>;
+  getChartsOverview(): Promise<OnlineChartsOverview>;
+  getDailyRecommendedPlaylists(): Promise<OnlinePlaylistRecommendation[]>;
+  getHighqualityPlaylists(limit?: number): Promise<OnlinePlaylistRecommendation[]>;
+  getPlaylistCategories(): Promise<OnlinePlaylistCategory[]>;
+  getPlaylistsByCategory(category: string, limit?: number): Promise<OnlinePlaylistRecommendation[]>;
+  getRecommendedPlaylists(limit?: number): Promise<OnlinePlaylistRecommendation[]>;
+  getPlaylistDetail(playlistId: string): Promise<OnlinePlaylistDetail | null>;
+  getTrack(itemId: string): Promise<PlayableItem | null>;
+  resolvePlayback(itemId: string): Promise<PlaybackAsset | null>;
+  getLyrics(itemId: string): Promise<LyricsResponse>;
+  download(itemId: string): Promise<DownloadedAssetRecord | null>;
+  listDownloads(): Promise<DownloadedAssetRecord[]>;
+  getDefaultDownloadDirectory(): Promise<string>;
 }
 
 export interface AuralBridge {
@@ -209,6 +343,7 @@ export interface AuralBridge {
   library: LibraryApi;
   search: SearchApi;
   collection: CollectionApi;
+  online: OnlineApi;
   audio: AudioApi;
   settings: SettingsApi;
   lyrics: LyricsApi;

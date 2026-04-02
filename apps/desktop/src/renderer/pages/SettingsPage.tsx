@@ -8,6 +8,7 @@ import {
   SettingsAppearanceSection,
   SettingsAudioSection,
   SettingsLibrarySection,
+  SettingsOnlineSection,
   SettingsPlaybackSection
 } from "./settings/sections";
 import { TAB_SECTION_IDS, TABS } from "./settings/settings-page.utils";
@@ -34,7 +35,7 @@ export const SettingsPage = () => {
     <div ref={state.pageRef} className="flex flex-col gap-6">
       <div ref={state.stickyTabsRef} className="sticky top-0 z-20 px-6 pb-4 pt-5">
         <Tabs value={state.activeTab} orientation="vertical" onValueChange={(value) => state.scrollTo(value as keyof typeof TAB_SECTION_IDS)} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 gap-3 rounded-[22px] border border-border bg-background/55 p-1.5 backdrop-blur-xl">
+          <TabsList className="grid w-full grid-cols-1 gap-3 rounded-[22px] border border-border bg-background/55 p-1.5 backdrop-blur-xl sm:grid-cols-2 xl:grid-cols-5">
             {TABS.map((tab) => (
               <TabsTrigger
                 key={tab.id}
@@ -102,6 +103,7 @@ export const SettingsPage = () => {
           headphoneInsertAction={state.headphoneInsertAction}
           headphoneRemoveAction={state.headphoneRemoveAction}
           setPersistent={state.setPersistent}
+          flushPersistent={state.flushPersistent}
           setDraftValue={state.setDraftValue}
         />
 
@@ -147,12 +149,29 @@ export const SettingsPage = () => {
           setDraftValue={state.setDraftValue}
           channelMode={state.channelMode}
           setPersistent={state.setPersistent}
+          flushPersistent={state.flushPersistent}
           channelBalance={state.channelBalance}
           crossfadeSeconds={state.crossfadeSeconds}
           outputDeviceSupported={state.outputDeviceSupported}
           outputDeviceId={state.outputDeviceId}
           outputDeviceOptions={state.outputDeviceOptions}
           handleOutputDeviceChange={state.handleOutputDeviceChange}
+        />
+
+        <SettingsOnlineSection
+          sectionId={TAB_SECTION_IDS.online}
+          setSectionRef={(node) => {
+            state.sectionRefs.current.online = node;
+          }}
+          onlineDownloadDirectoryDraft={state.onlineDownloadDirectoryDraft}
+          onlineDefaultDownloadDirectory={state.onlineDefaultDownloadDirectory}
+          onlineEffectiveDownloadDirectory={state.onlineEffectiveDownloadDirectory}
+          setOnlineDownloadDirectoryDraft={state.setOnlineDownloadDirectoryDraft}
+          commitOnlineDownloadDirectory={state.commitOnlineDownloadDirectory}
+          chooseOnlineDownloadDirectory={state.chooseOnlineDownloadDirectory}
+          openOnlineDownloadDirectory={state.openOnlineDownloadDirectory}
+          onlinePreferDownloadedCopy={state.onlinePreferDownloadedCopy}
+          setPersistent={state.setPersistent}
         />
       </div>
     </div>

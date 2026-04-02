@@ -1,4 +1,4 @@
-import type { AlbumSummary, ArtistSummary, SearchTrackHit } from "@aural/domain";
+import type { AlbumSummary, ArtistSummary, PlayableItem, SearchTrackHit } from "@aural/domain";
 import { Disc3, LoaderCircle, Search, UserRound } from "lucide-react";
 import {
   Command,
@@ -9,8 +9,8 @@ import {
   CommandSeparator
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-import { toFileUrl } from "@renderer/lib/fileUrl";
 import { formatDuration } from "@renderer/lib/formatters";
+import { resolvePlayableCoverUrl } from "@renderer/lib/playable";
 import { renderHighlightedText } from "./global-search.utils";
 
 interface GlobalSearchResultsProps {
@@ -19,10 +19,12 @@ interface GlobalSearchResultsProps {
   normalizedQuery: string;
   artists: ArtistSummary[];
   albums: AlbumSummary[];
-  tracks: SearchTrackHit[];
+  localTracks: SearchTrackHit[];
+  onlineTracks: PlayableItem[];
   onArtistSelect: (artist: ArtistSummary) => void;
   onAlbumSelect: (album: AlbumSummary) => void;
-  onTrackSelect: (track: SearchTrackHit) => Promise<void>;
+  onLocalTrackSelect: (track: SearchTrackHit) => Promise<void>;
+  onOnlineTrackSelect: (track: PlayableItem) => Promise<void>;
 }
 
 export const GlobalSearchResults = ({
@@ -31,10 +33,12 @@ export const GlobalSearchResults = ({
   normalizedQuery,
   artists,
   albums,
-  tracks,
+  localTracks,
+  onlineTracks,
   onArtistSelect,
   onAlbumSelect,
-  onTrackSelect
+  onLocalTrackSelect,
+  onOnlineTrackSelect
 }: GlobalSearchResultsProps) => (
   <Command shouldFilter={false} className="rounded-[28px] border-0 bg-transparent shadow-none">
     <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -64,7 +68,7 @@ export const GlobalSearchResults = ({
         </CommandGroup>
       ) : null}
 
-      {artists.length && (albums.length || tracks.length) ? <CommandSeparator /> : null}
+      {artists.length && (albums.length || localTracks.length || onlineTracks.length) ? <CommandSeparator /> : null}
 
       {albums.length ? (
         <CommandGroup heading="Albums">
@@ -73,7 +77,7 @@ export const GlobalSearchResults = ({
               {album.coverPath ? (
                 <span
                   className="size-11 shrink-0 rounded-2xl border border-border bg-cover bg-center shadow-[0_10px_24px_rgba(0,0,0,0.12)]"
-                  style={{ backgroundImage: `url("${toFileUrl(album.coverPath)}")` }}
+                  style={{ backgroundImage: `url("${resolvePlayableCoverUrl({ coverPath: album.coverPath, coverUrl: null })}")` }}
                 />
               ) : (
                 <span className="flex size-10 shrink-0 items-center justify-center rounded-2xl border border-border bg-background/72 text-muted-foreground transition-colors group-data-[selected=true]:border-primary/40 group-data-[selected=true]:bg-accent group-data-[selected=true]:text-accent-foreground">
@@ -91,24 +95,70 @@ export const GlobalSearchResults = ({
         </CommandGroup>
       ) : null}
 
-      {albums.length && tracks.length ? <CommandSeparator /> : null}
+      {albums.length && (localTracks.length || onlineTracks.length) ? <CommandSeparator /> : null}
 
-      {tracks.length ? (
+      {localTracks.length ? (
         <CommandGroup heading="Songs">
-          {tracks.map((track) => {
-            const coverStyle = track.coverPath
-              ? { backgroundImage: `url("${toFileUrl(track.coverPath)}")` }
+          {localTracks.map((track) => {
+            const coverUrl = resolvePlayableCoverUrl({ coverPath: track.coverPath, coverUrl: null });
+            const coverStyle = coverUrl
+              ? { backgroundImage: `url("${coverUrl}")` }
               : {
                   backgroundImage:
                     "linear-gradient(135deg, color-mix(in srgb, var(--primary) 92%, white 8%), color-mix(in srgb, var(--primary) 26%, #31d2ff 74%))"
                 };
 
             return (
-              <CommandItem key={track.id} value={`track-${track.id}`} onSelect={() => void onTrackSelect(track)} className="group">
+              <CommandItem key={track.id} value={`track-${track.id}`} onSelect={() => void onLocalTrackSelect(track)} className="group">
                 <span
                   className={cn(
                     "size-11 shrink-0 rounded-2xl border border-border bg-cover bg-center shadow-[0_10px_24px_rgba(0,0,0,0.12)]",
                     !track.coverPath && "border-primary/18"
+                  )}
+                  style={coverUrl ? { backgroundImage: `url("${coverUrl}")` } : coverStyle}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-foreground">{renderHighlightedText(track.title, normalizedQuery)}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {renderHighlightedText(`${track.artist} - ${track.album}`, normalizedQuery)}
+                  </p>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="rounded-full bg-secondary px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    {track.reason}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground">{formatDuration(track.duration)}</span>
+                </div>
+              </CommandItem>
+            );
+          })}
+        </CommandGroup>
+      ) : null}
+
+      {localTracks.length && onlineTracks.length ? <CommandSeparator /> : null}
+
+      {onlineTracks.length ? (
+        <CommandGroup heading="Online Songs">
+          {onlineTracks.map((track) => {
+            const coverUrl = resolvePlayableCoverUrl(track);
+            const coverStyle = coverUrl
+              ? { backgroundImage: `url("${coverUrl}")` }
+              : {
+                  backgroundImage:
+                    "linear-gradient(135deg, color-mix(in srgb, var(--primary) 84%, white 16%), color-mix(in srgb, var(--primary) 22%, #ff8b62 78%))"
+                };
+
+            return (
+              <CommandItem
+                key={track.id}
+                value={`online-track-${track.id}`}
+                onSelect={() => void onOnlineTrackSelect(track)}
+                className="group"
+              >
+                <span
+                  className={cn(
+                    "size-11 shrink-0 rounded-2xl border border-border bg-cover bg-center shadow-[0_10px_24px_rgba(0,0,0,0.12)]",
+                    !coverUrl && "border-primary/18"
                   )}
                   style={coverStyle}
                 />
@@ -120,7 +170,7 @@ export const GlobalSearchResults = ({
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   <span className="rounded-full bg-secondary px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    {track.reason}
+                    Online
                   </span>
                   <span className="text-[11px] text-muted-foreground">{formatDuration(track.duration)}</span>
                 </div>

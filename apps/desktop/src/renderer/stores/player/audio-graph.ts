@@ -1,6 +1,6 @@
-import type { Track } from "@aural/domain";
-import { bridge } from "@renderer/lib/bridge";
-import { toFileUrl } from "@renderer/lib/fileUrl";
+import type { PlaybackAsset, PlayableItem } from "@aural/domain";
+import { toFileUrl, toStreamProxyUrl } from "@renderer/lib/fileUrl";
+import { flushPendingSettingsForKeys, persistSetting } from "@renderer/lib/settingsPersistence";
 import { SpectrumEngine, type SpectrumFrame } from "@renderer/lib/spectrumEngine";
 import { usePreferencesStore } from "@renderer/stores/preferencesStore";
 export type { SpectrumFrame } from "@renderer/lib/spectrumEngine";
@@ -87,14 +87,14 @@ export const applyOutputDevice = async (deviceId: string) => {
 };
 
 export const persistPlayerVolumePreference = (volume: number) => {
-  void bridge.settings
-    .setSetting("player.volume", volume)
-    .then(() => {
-      usePreferencesStore.getState().update("player.volume", volume);
-    })
-    .catch(() => {
-      // Ignore persistence failures and keep playback responsive.
-    });
+  usePreferencesStore.getState().update("player.volume", volume);
+  void persistSetting("player.volume", volume).catch(() => {
+    // Ignore persistence failures and keep playback responsive.
+  });
+};
+
+export const flushPlayerVolumePreference = async () => {
+  await flushPendingSettingsForKeys(["player.volume"]);
 };
 
 let audioContext: AudioContext | null = null;
@@ -386,14 +386,20 @@ export const resetDeck = (deck: AudioDeck, options: { clearSource?: boolean } = 
 
 export const prepareDeck = async (
   deck: AudioDeck,
-  track: Track,
+  item: PlayableItem,
+  asset: PlaybackAsset,
   startAtSeconds: number,
   playbackRate: number,
   isMuted: boolean
 ) => {
-  deck.trackId = track.id;
+  deck.trackId = item.id;
   deck.element.pause();
-  deck.element.src = toFileUrl(track.path);
+  deck.element.src =
+    asset.kind === "file" && asset.path
+      ? toFileUrl(asset.path)
+      : asset.streamUrl
+        ? toStreamProxyUrl(asset.streamUrl)
+        : "";
   deck.element.load();
   deck.element.playbackRate = playbackRate;
   deck.element.muted = isMuted;
@@ -407,14 +413,14 @@ export const prepareDeck = async (
     const handleError = () => {
       deck.element.removeEventListener("loadedmetadata", handleReady);
       deck.element.removeEventListener("error", handleError);
-      reject(new Error(`Failed to load media: ${track.path}`));
+      reject(new Error(`Failed to load media: ${item.title}`));
     };
 
     deck.element.addEventListener("loadedmetadata", handleReady);
     deck.element.addEventListener("error", handleError);
   });
 
-  deck.element.currentTime = Math.min(startAtSeconds, resolveElementDurationSeconds(deck.element, track.duration));
+  deck.element.currentTime = Math.min(startAtSeconds, resolveElementDurationSeconds(deck.element, item.duration));
 };
 
 export const getPlayerSpectrumFrame = (): SpectrumFrame => spectrumFrame;

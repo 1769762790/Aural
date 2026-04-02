@@ -99,7 +99,7 @@ export const ensureLibrarySummaries = (database: AuralDatabase, refreshLibrarySu
 export const getArtistDetail = (database: AuralDatabase, artistId: string): ArtistDetail | null => {
   const summary = database.db.prepare(
     `
-    SELECT id, name, normalized_name, track_count, album_count, cover_path
+    SELECT id, name, normalized_name, track_count, album_count, cover_path, NULL AS cover_url
     FROM artist_summaries
     WHERE id = ?
   `
@@ -128,6 +128,7 @@ export const getArtistDetail = (database: AuralDatabase, artistId: string): Arti
     trackCount: Number(summary.track_count),
     albumCount: Number(summary.album_count),
     coverPath: summary.cover_path ?? null,
+    coverUrl: summary.cover_url ?? null,
     tracks,
     totalDurationSeconds: tracks.reduce((sum, track) => sum + track.duration, 0)
   };
@@ -145,7 +146,8 @@ export const listArtists = (database: AuralDatabase, query: ArtistListQuery = {}
         normalized_name,
         track_count,
         album_count,
-        cover_path
+        cover_path,
+        NULL AS cover_url
       FROM artist_summaries
       ORDER BY ${orderBy} ${direction(query.sortDirection)}
     `
@@ -156,6 +158,7 @@ export const listArtists = (database: AuralDatabase, query: ArtistListQuery = {}
     normalizedName: row.normalized_name,
     trackCount: Number(row.track_count),
     albumCount: Number(row.album_count),
-    coverPath: row.cover_path ?? null
+    coverPath: row.cover_path ?? null,
+    coverUrl: row.cover_url ?? null
   }));
 };

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { ArrowDownWideNarrow, Check, Grid2X2, Rows3 } from "lucide-react";
 import { DataTable } from "@renderer/components/DataTable";
@@ -12,8 +12,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { buildPlaylistCardArtwork } from "@renderer/lib/playlistArtwork";
+import { resolvePlayableCoverUrl } from "@renderer/lib/playable";
 
-type BrowserLayout = "grid" | "list";
+export type BrowserLayout = "grid" | "list";
 
 export interface LibraryBrowserItem {
   id: string;
@@ -21,6 +22,7 @@ export interface LibraryBrowserItem {
   subtitle: string;
   meta: string;
   coverPath?: string | null;
+  coverUrl?: string | null;
   fallbackSeed: string;
 }
 
@@ -38,6 +40,12 @@ interface LibraryBrowserProps {
   selectedSort?: string;
   onSortChange?: (value: string) => void;
   onItemClick?: (item: LibraryBrowserItem) => void;
+  controlsSlot?: ReactNode;
+  hideSortControl?: boolean;
+  preserveInputOrder?: boolean;
+  layout?: BrowserLayout;
+  onLayoutChange?: (layout: BrowserLayout) => void;
+  hideLayoutControls?: boolean;
 }
 
 export const LibraryBrowser = ({
@@ -48,16 +56,30 @@ export const LibraryBrowser = ({
   sortOptions,
   selectedSort,
   onSortChange,
-  onItemClick
+  onItemClick,
+  controlsSlot,
+  hideSortControl = false,
+  preserveInputOrder = false,
+  layout: controlledLayout,
+  onLayoutChange,
+  hideLayoutControls = false
 }: LibraryBrowserProps) => {
-  const [layout, setLayout] = useState<BrowserLayout>("grid");
+  const [internalLayout, setInternalLayout] = useState<BrowserLayout>("grid");
+  const layout = controlledLayout ?? internalLayout;
+
+  const handleLayoutChange = (nextLayout: BrowserLayout) => {
+    onLayoutChange?.(nextLayout);
+    if (controlledLayout === undefined) {
+      setInternalLayout(nextLayout);
+    }
+  };
 
   const sortedItems = useMemo(
     () =>
-      sortOptions?.length
+      preserveInputOrder || sortOptions?.length
         ? items
         : [...items].sort((left, right) => left.title.localeCompare(right.title, "zh-CN")),
-    [items]
+    [items, preserveInputOrder, sortOptions]
   );
 
   const activeSortLabel = useMemo(() => {
@@ -82,10 +104,15 @@ export const LibraryBrowser = ({
 
           return (
             <div className="flex min-w-0 items-center gap-4">
+              {(() => {
+                const coverUrl = resolvePlayableCoverUrl({ coverPath: item.coverPath ?? null, coverUrl: item.coverUrl ?? null });
+                return (
               <div
                 className="size-14 shrink-0 rounded-[18px] border border-border/70 bg-cover bg-center shadow-[0_12px_30px_rgba(0,0,0,0.1)]"
-                style={buildPlaylistCardArtwork(item.fallbackSeed, item.coverPath ?? null)}
+                style={coverUrl ? { backgroundImage: `url("${coverUrl}")` } : buildPlaylistCardArtwork(item.fallbackSeed, item.coverPath ?? null)}
               />
+                );
+              })()}
               <div className="min-w-0">
                 <h3 className="truncate text-base font-semibold text-foreground">{item.title}</h3>
               </div>
@@ -117,21 +144,14 @@ export const LibraryBrowser = ({
     []
   );
 
-  if (!sortedItems.length) {
-    return (
-      <Card className="border-border bg-card/72 p-8">
-        <div className="space-y-2">
-          <h2 className="text-2xl font-bold tracking-[-0.04em] text-foreground">{emptyTitle}</h2>
-          <p className="max-w-xl text-sm leading-7 text-muted-foreground">{emptyDescription}</p>
-        </div>
-      </Card>
-    );
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        {sortOptions?.length ? (
+        {controlsSlot ? (
+          <div className="min-w-0 flex-1">{controlsSlot}</div>
+        ) : hideSortControl ? (
+          <div />
+        ) : sortOptions?.length ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -160,13 +180,14 @@ export const LibraryBrowser = ({
           </div>
         )}
 
+        {hideLayoutControls ? null : (
         <div className="inline-flex items-center gap-2">
           <Button
             type="button"
             size="icon"
             variant={layout === "grid" ? "default" : "outline"}
             className={cn("size-10", layout === "grid" && "shadow-[0_14px_30px_color-mix(in_srgb,var(--primary)_24%,transparent)]")}
-            onClick={() => setLayout("grid")}
+            onClick={() => handleLayoutChange("grid")}
             aria-label="Grid layout"
           >
             <Grid2X2 className="size-4" />
@@ -176,15 +197,23 @@ export const LibraryBrowser = ({
             size="icon"
             variant={layout === "list" ? "default" : "outline"}
             className={cn("size-10", layout === "list" && "shadow-[0_14px_30px_color-mix(in_srgb,var(--primary)_24%,transparent)]")}
-            onClick={() => setLayout("list")}
+            onClick={() => handleLayoutChange("list")}
             aria-label="List layout"
           >
             <Rows3 className="size-4" />
           </Button>
         </div>
+        )}
       </div>
 
-      {layout === "grid" ? (
+      {!sortedItems.length ? (
+        <Card className="border-border bg-card/72 p-8">
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold tracking-[-0.04em] text-foreground">{emptyTitle}</h2>
+            <p className="max-w-xl text-sm leading-7 text-muted-foreground">{emptyDescription}</p>
+          </div>
+        </Card>
+      ) : layout === "grid" ? (
         <div className="grid gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
           {sortedItems.map((item) => (
             <button
@@ -193,10 +222,15 @@ export const LibraryBrowser = ({
               className="group space-y-3 text-left"
               onClick={() => onItemClick?.(item)}
             >
+              {(() => {
+                const coverUrl = resolvePlayableCoverUrl({ coverPath: item.coverPath ?? null, coverUrl: item.coverUrl ?? null });
+                return (
               <div
                 className="aspect-square rounded-[30px] border border-border/70 bg-cover bg-center shadow-[0_22px_48px_rgba(0,0,0,0.12)] transition-transform duration-300 group-hover:-translate-y-1"
-                style={buildPlaylistCardArtwork(item.fallbackSeed, item.coverPath ?? null)}
+                style={coverUrl ? { backgroundImage: `url("${coverUrl}")` } : buildPlaylistCardArtwork(item.fallbackSeed, item.coverPath ?? null)}
               />
+                );
+              })()}
               <div className="space-y-1 px-1">
                 <h3 className="truncate text-xl font-bold tracking-[-0.04em] text-foreground">{item.title}</h3>
                 <p className="truncate text-sm text-muted-foreground">{item.subtitle}</p>

@@ -1,5 +1,5 @@
 import type { LyricsResponse } from "@aural/contracts";
-import type { Track } from "@aural/domain";
+import type { PlayableItem } from "@aural/domain";
 import { resolveNextQueueIndex, startTrackPlayback, type PlaybackState, type QueueState } from "@aural/player";
 import { bridge } from "@renderer/lib/bridge";
 import {
@@ -22,7 +22,7 @@ import {
   type ShuffleStrategy
 } from "./audio-graph";
 
-const toPlayerTrackId = (trackId: Track["id"]) => trackId as never;
+const toPlayerTrackId = (trackId: PlayableItem["id"]) => trackId as never;
 const randomIndex = (length: number) => Math.floor(Math.random() * length);
 
 let trackSwitchInFlight = false;
@@ -79,15 +79,26 @@ interface LoadTrackOptions {
 }
 
 interface LoadTrackResult {
-  currentTrack: Track | null;
+  currentItem: PlayableItem | null;
   lyrics: LyricsResponse | null;
   playback: PlaybackState;
 }
 
+const resolvePlaybackAsset = async (item: PlayableItem) => {
+  if (item.source === "local" && item.path) {
+    return {
+      kind: "file" as const,
+      path: item.path
+    };
+  }
+
+  return bridge.online.resolvePlayback(item.id);
+};
+
 export const loadTrack = async (
   queue: QueueState,
   playback: PlaybackState,
-  trackMap: Record<string, Track>,
+  itemMap: Record<string, PlayableItem>,
   trackId: string | null,
   isMuted: boolean,
   runtimeDuckActive: boolean,
@@ -105,7 +116,7 @@ export const loadTrack = async (
       getAllDecks().forEach((deck) => resetDeck(deck, { clearSource: true }));
       setOutputGainImmediate(0);
       return {
-        currentTrack: null,
+        currentItem: null,
         lyrics: null,
         playback: {
           ...playback,
@@ -114,10 +125,10 @@ export const loadTrack = async (
       };
     }
 
-    const currentTrack = trackMap[trackId] ?? null;
-    if (!currentTrack) {
+    const currentItem = itemMap[trackId] ?? null;
+    if (!currentItem) {
       return {
-        currentTrack: null,
+        currentItem: null,
         lyrics: null,
         playback
       };
@@ -129,10 +140,21 @@ export const loadTrack = async (
     const transitionSeconds = resolveFadeTransitionSeconds(fadeEnabled, crossfadeSeconds);
     const autoplay = options.autoplay ?? true;
     const startAtSeconds = Math.max(0, options.startAtSeconds ?? 0);
+    const playbackAsset = await resolvePlaybackAsset(currentItem);
+    if (!playbackAsset) {
+      return {
+        currentItem: null,
+        lyrics: null,
+        playback: {
+          ...playback,
+          isPlaying: false
+        }
+      };
+    }
 
     applyChannelBalance(channelBalance);
 
-    await prepareDeck(nextDeck, currentTrack, startAtSeconds, playback.playbackRate, isMuted);
+    await prepareDeck(nextDeck, currentItem, playbackAsset, startAtSeconds, playback.playbackRate, isMuted);
     setOutputGainImmediate(
       resolveOutputVolume(
         playback.volume,
@@ -180,7 +202,7 @@ export const loadTrack = async (
           setDeckGainImmediate(nextDeck, 1);
         }
       }
-      await bridge.collection.recordPlay(currentTrack.id);
+      await bridge.collection.recordPlay(currentItem.id, queue.items[queue.currentIndex]?.sourceType, queue.items[queue.currentIndex]?.sourceId);
     } else {
       if (hasActiveSource) {
         resetDeck(previousDeck, { clearSource: true });
@@ -190,16 +212,16 @@ export const loadTrack = async (
       nextDeck.element.pause();
     }
 
-    const lyrics = await bridge.lyrics.getLyrics(currentTrack.id);
+    const lyrics = await bridge.lyrics.getLyrics(currentItem.id);
     const nextPlayback = startTrackPlayback(playback, {
       queue,
-      currentTrackId: toPlayerTrackId(currentTrack.id),
+      currentTrackId: toPlayerTrackId(currentItem.id),
       progressSeconds: nextDeck.element.currentTime,
-      durationSeconds: resolveDurationSeconds(currentTrack.duration)
+      durationSeconds: resolveDurationSeconds(currentItem.duration)
     });
 
     return {
-      currentTrack,
+      currentItem,
       lyrics,
       playback: autoplay
         ? nextPlayback

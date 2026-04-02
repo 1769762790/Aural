@@ -1,4 +1,4 @@
-import { Check, FolderSearch, Loader2, PlayCircle, Plus, RefreshCw, Sparkles, Trash2, Volume2, X } from "lucide-react";
+import { Check, Cloud, FolderSearch, Loader2, PlayCircle, Plus, RefreshCw, Sparkles, Trash2, Volume2, X } from "lucide-react";
 import type { SettingKey, SettingValue } from "@aural/domain";
 import { Accordion, AccordionContent, AccordionItem } from "@/components/ui/accordion";
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -10,7 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import type { Draft } from "./settings-page.utils";
-import { Intro, RangeRow, SegmentRow, SelectRow, SettingsCard, ToggleRow } from "./section-primitives";
+import { Intro, RangeRow, SegmentRow, SelectRow, SettingsCard, TextInputRow, ToggleRow } from "./section-primitives";
 
 export const SettingsAppearanceSection = ({
   sectionId,
@@ -200,6 +200,7 @@ export const SettingsPlaybackSection = ({
   headphoneInsertAction,
   headphoneRemoveAction,
   setPersistent,
+  flushPersistent,
   setDraftValue
 }: {
   sectionId: string;
@@ -217,6 +218,7 @@ export const SettingsPlaybackSection = ({
   headphoneInsertAction: "play" | "ignore";
   headphoneRemoveAction: "pause" | "ignore";
   setPersistent: (key: SettingKey, value: SettingValue) => void;
+  flushPersistent: (key: SettingKey) => void;
   setDraftValue: <K extends keyof Draft>(key: K, value: Draft[K]) => void;
 }) => (
   <section id={sectionId} data-settings-tab="playback" ref={setSectionRef} className="scroll-mt-28 space-y-6">
@@ -246,7 +248,7 @@ export const SettingsPlaybackSection = ({
             <AccordionContent className="px-5 pb-5">
               <div className="grid gap-4 rounded-[20px] p-4">
                 <SegmentRow label="Fade mode" desc="Choose between a normal fade and a crossfade-style switch." value={fadeMode} options={[["Normal fade", "fade"], ["Crossfade", "crossfade"]]} onChange={(value) => setPersistent("player.fadeMode", value)} live />
-                <RangeRow label="Fade duration" desc="Adjust the transition time from 300ms to 1500ms." value={Math.round(crossfadeSeconds * 1000)} min={300} max={1500} step={100} suffix="ms" onChange={(value) => setPersistent("player.crossfadeSeconds", Number((value / 1000).toFixed(1)))} live />
+                <RangeRow label="Fade duration" desc="Adjust the transition time from 300ms to 1500ms." value={Math.round(crossfadeSeconds * 1000)} min={300} max={1500} step={100} suffix="ms" onChange={(value) => setPersistent("player.crossfadeSeconds", Number((value / 1000).toFixed(1)))} onCommit={() => flushPersistent("player.crossfadeSeconds")} live />
               </div>
             </AccordionContent>
           </AccordionItem>
@@ -254,7 +256,7 @@ export const SettingsPlaybackSection = ({
         <ToggleRow label="Resume from last position" desc="Continue from the last stopped position after restart." checked={resume} onChange={(value) => { setPersistent("player.resume", value); if (!value) { setPersistent("player.startupAutoplay", false); } }} live />
         <SegmentRow label="Default playback mode" desc="Set queue, repeat-one, or shuffle as the default." value={playbackMode} options={[["Queue", "queue"], ["Repeat one", "repeat-one"], ["Shuffle", "shuffle"]]} onChange={(value) => setPersistent("player.playbackMode", value)} live />
         <SegmentRow label="Shuffle strategy" desc="Switch between true random and anti-repeat shuffle." value={shuffleStrategy} options={[["True random", "true-random"], ["Anti-repeat", "anti-repeat"]]} onChange={(value) => setPersistent("player.shuffleStrategy", value)} live />
-        <RangeRow label="Default speed" desc="Default playback speed from 0.5x to 3.0x." value={playbackRate} min={0.5} max={3} step={0.1} suffix="x" onChange={(value) => setPersistent("player.playbackRate", Number(value.toFixed(1)))} live />
+        <RangeRow label="Default speed" desc="Default playback speed from 0.5x to 3.0x." value={playbackRate} min={0.5} max={3} step={0.1} suffix="x" onChange={(value) => setPersistent("player.playbackRate", Number(value.toFixed(1)))} onCommit={() => flushPersistent("player.playbackRate")} live />
         <div className="grid gap-4 xl:grid-cols-2">
           <ToggleRow label="Remember per-track speed" desc="Store the last used speed for each track." checked={draft.rememberTrackSpeed} onChange={(value) => setDraftValue("rememberTrackSpeed", value)} />
           <ToggleRow label="Pitch compensation" desc="Keep pitch steadier when playback speed changes." checked={draft.pitchCompensation} onChange={(value) => setDraftValue("pitchCompensation", value)} />
@@ -517,6 +519,7 @@ export const SettingsAudioSection = ({
   setDraftValue,
   channelMode,
   setPersistent,
+  flushPersistent,
   channelBalance,
   crossfadeSeconds,
   outputDeviceSupported,
@@ -531,6 +534,7 @@ export const SettingsAudioSection = ({
   setDraftValue: <K extends keyof Draft>(key: K, value: Draft[K]) => void;
   channelMode: "stereo" | "mono";
   setPersistent: (key: SettingKey, value: SettingValue) => void;
+  flushPersistent: (key: SettingKey) => void;
   channelBalance: number;
   crossfadeSeconds: number;
   outputDeviceSupported: boolean;
@@ -550,8 +554,8 @@ export const SettingsAudioSection = ({
         <SegmentRow label="EQ preset" desc="Switch between common tonal presets or custom mode." value={draft.eqPreset} options={[["Off", "off"], ["Pop", "pop"], ["Rock", "rock"], ["Classical", "classical"], ["Vocal", "vocal"], ["Custom", "custom"]]} onChange={(value) => setDraftValue("eqPreset", value as Draft["eqPreset"])} />
         <SegmentRow label="Channel mode" desc="Switch between stereo and mono." value={channelMode} options={[["Stereo", "stereo"], ["Mono", "mono"]]} onChange={(value) => setPersistent("player.channelMode", value)} live />
         <div className="grid gap-4 xl:grid-cols-2">
-          <RangeRow label="Left / right balance" desc="Shift playback center left or right." value={channelBalance} min={-100} max={100} step={5} suffix="%" onChange={(value) => setPersistent("player.channelBalance", Math.min(100, Math.max(-100, Math.round(value / 5) * 5)))} live />
-          <RangeRow label="Fade duration" desc="Control the crossfade duration from 0 to 5 seconds." value={crossfadeSeconds} min={0} max={5} step={0.5} suffix="s" onChange={(value) => setPersistent("player.crossfadeSeconds", Number(value.toFixed(1)))} live />
+          <RangeRow label="Left / right balance" desc="Shift playback center left or right." value={channelBalance} min={-100} max={100} step={5} suffix="%" onChange={(value) => setPersistent("player.channelBalance", Math.min(100, Math.max(-100, Math.round(value / 5) * 5)))} onCommit={() => flushPersistent("player.channelBalance")} live />
+          <RangeRow label="Fade duration" desc="Control the crossfade duration from 0 to 5 seconds." value={crossfadeSeconds} min={0} max={5} step={0.5} suffix="s" onChange={(value) => setPersistent("player.crossfadeSeconds", Number(value.toFixed(1)))} onCommit={() => flushPersistent("player.crossfadeSeconds")} live />
         </div>
       </SettingsCard>
       <SettingsCard title="Advanced quality settings" description="Decoder behavior, output routing, and plugin hooks stay hidden until needed.">
@@ -570,6 +574,73 @@ export const SettingsAudioSection = ({
           <ToggleRow label="VST plugin management" desc="Enable desktop VST effect expansion." checked={draft.vstEnabled} onChange={(value) => setDraftValue("vstEnabled", value)} />
           <ToggleRow label="Noise reduction" desc="Reduce low-level background noise." checked={draft.noiseReduction} onChange={(value) => setDraftValue("noiseReduction", value)} />
         </div>
+      </SettingsCard>
+    </div>
+  </section>
+);
+
+export const SettingsOnlineSection = ({
+  sectionId,
+  setSectionRef,
+  onlineDownloadDirectoryDraft,
+  onlineDefaultDownloadDirectory,
+  onlineEffectiveDownloadDirectory,
+  setOnlineDownloadDirectoryDraft,
+  commitOnlineDownloadDirectory,
+  chooseOnlineDownloadDirectory,
+  openOnlineDownloadDirectory,
+  onlinePreferDownloadedCopy,
+  setPersistent
+}: {
+  sectionId: string;
+  setSectionRef: (node: HTMLElement | null) => void;
+  onlineDownloadDirectoryDraft: string;
+  onlineDefaultDownloadDirectory: string;
+  onlineEffectiveDownloadDirectory: string;
+  setOnlineDownloadDirectoryDraft: (value: string) => void;
+  commitOnlineDownloadDirectory: () => void;
+  chooseOnlineDownloadDirectory: () => Promise<void>;
+  openOnlineDownloadDirectory: () => Promise<void>;
+  onlinePreferDownloadedCopy: boolean;
+  setPersistent: (key: SettingKey, value: SettingValue) => void;
+}) => (
+  <section id={sectionId} data-settings-tab="online" ref={setSectionRef} className="scroll-mt-28 space-y-6">
+    <Intro
+      icon={Cloud}
+      eyebrow="Online"
+      description="Configure offline download location and cache preference without mixing these controls into local-library playback settings."
+    />
+    <div className="grid gap-5">
+      <SettingsCard title="Offline cache policy" description="Decide where downloads are stored and whether cached files take priority during playback.">
+        <TextInputRow
+          label="Download directory"
+          desc="Manual path for downloaded online tracks. Leave empty to use the default userData online-cache directory."
+          value={onlineDownloadDirectoryDraft}
+          placeholder={onlineDefaultDownloadDirectory || "Loading default online-cache path..."}
+          onChange={setOnlineDownloadDirectoryDraft}
+          onCommit={commitOnlineDownloadDirectory}
+          actionLabel="Open"
+          onAction={() => {
+            void openOnlineDownloadDirectory();
+          }}
+          secondaryActionLabel="Change"
+          onSecondaryAction={() => {
+            void chooseOnlineDownloadDirectory();
+          }}
+        />
+        <div className="rounded-[20px] border border-dashed border-border bg-background/40 px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Effective directory</p>
+          <p className="mt-2 break-all text-sm leading-6 text-foreground">
+            {onlineEffectiveDownloadDirectory || "Resolving default online-cache directory..."}
+          </p>
+        </div>
+        <ToggleRow
+          label="Prefer downloaded copy"
+          desc="Use an offline cached file first when the same online track has already been downloaded."
+          checked={onlinePreferDownloadedCopy}
+          onChange={(value) => setPersistent("online.preferDownloadedCopy", value)}
+          live
+        />
       </SettingsCard>
     </div>
   </section>

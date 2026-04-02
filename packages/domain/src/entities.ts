@@ -5,6 +5,10 @@ export type PlaybackMode = "queue" | "shuffle" | "repeat-one";
 export type ThemeMode = "system" | "light" | "dark";
 export type SearchScope = "all" | "tracks" | "artists" | "albums" | "playlists";
 export type SortDirection = "asc" | "desc";
+export type MediaSource = "local" | "online";
+export type OnlineProviderId = "unblockneteasemusic";
+export type LyricsAvailability = "embedded" | "file" | "remote" | "none";
+export type BrowseMode = "local" | "online";
 export type SettingKey =
   | "appearance.mode"
   | "appearance.accent"
@@ -42,7 +46,12 @@ export type SettingKey =
   | "history.maxItems"
   | "history.clearOnExit"
   | "library.density"
-  | "settings.centerDraft";
+  | "settings.centerDraft"
+  | "online.enabled"
+  | "online.providerBaseUrl"
+  | "online.preferDownloadedCopy"
+  | "online.downloadDirectory"
+  | "online.lastMode";
 
 export type SettingValue = string | number | boolean | null;
 
@@ -70,6 +79,44 @@ export interface Track {
   fileHash: string | null;
 }
 
+export interface PlayableItem {
+  id: TrackId;
+  source: MediaSource;
+  provider: OnlineProviderId | null;
+  providerItemId: string | null;
+  title: string;
+  artist: string;
+  album: string;
+  albumArtist: string;
+  year: number | null;
+  genre: string | null;
+  duration: number;
+  format: string;
+  bitrate: number | null;
+  sampleRate: number | null;
+  coverPath: string | null;
+  coverUrl: string | null;
+  lyricPath: string | null;
+  path: string | null;
+  directory: string | null;
+  isFavorite: boolean;
+  playCount: number;
+  addedAt: string;
+  lastPlayedAt: string | null;
+  status: TrackStatus;
+  fileHash: string | null;
+  lyricsAvailability: LyricsAvailability;
+  downloadedPath: string | null;
+  localTrackId: TrackId | null;
+}
+
+export interface PlaybackAsset {
+  kind: "file" | "stream";
+  path?: string | null;
+  streamUrl?: string | null;
+  expiresAt?: string | null;
+}
+
 export interface ArtistSummary {
   id: string;
   name: string;
@@ -77,6 +124,7 @@ export interface ArtistSummary {
   trackCount: number;
   albumCount: number;
   coverPath: string | null;
+  coverUrl: string | null;
 }
 
 export interface AlbumSummary {
@@ -90,6 +138,11 @@ export interface AlbumSummary {
 
 export interface ArtistDetail extends ArtistSummary {
   tracks: Track[];
+  totalDurationSeconds: number;
+}
+
+export interface PlayableArtistDetail extends ArtistSummary {
+  tracks: PlayableItem[];
   totalDurationSeconds: number;
 }
 
@@ -116,9 +169,16 @@ export interface QueueItem {
   id: string;
   queueId: QueueId;
   trackId: TrackId;
-  sourceType: "album" | "artist" | "folder" | "playlist" | "search" | "library" | "favorites" | "history";
+  sourceType: "album" | "artist" | "folder" | "playlist" | "search" | "library" | "favorites" | "history" | "online";
   sourceId: string;
   position: number;
+}
+
+export interface PlayableSession {
+  mode: BrowseMode;
+  queue: QueueItem[];
+  currentItemId: TrackId | null;
+  progressSeconds: number;
 }
 
 export interface PlaybackState {

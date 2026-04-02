@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { LyricsResponse } from "@aural/contracts";
-import type { PlaybackState, Track } from "@aural/domain";
+import type { PlaybackState, PlayableItem } from "@aural/domain";
 
 export interface PlayerSceneProps {
   onClose?: () => void;
@@ -26,7 +26,7 @@ export interface PlayerLyricsViewModel {
 }
 
 export interface PlayerSceneArtworkPanelProps {
-  track: Track;
+  track: PlayableItem;
   coverBackground: CSSProperties;
   qualityBadges: string[];
   isPlaying: boolean;
@@ -37,7 +37,7 @@ export interface PlayerSceneArtworkPanelProps {
 }
 
 export interface PlayerSceneDockProps {
-  track: Track;
+  track: PlayableItem;
   playback: PlaybackState;
   queueOpen: boolean;
   motionEnabled: boolean;

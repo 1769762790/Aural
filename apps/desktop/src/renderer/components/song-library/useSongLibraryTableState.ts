@@ -133,7 +133,7 @@ export const useSongLibraryTableState = ({
     try {
       await bridge.collection.addToPlaylist({
         playlistId,
-        trackIds: [track.id]
+        itemIds: [track.id]
       });
       setOpenTrackMenuId(null);
       await playlists.refresh();
@@ -158,7 +158,7 @@ export const useSongLibraryTableState = ({
       const created = await bridge.collection.createPlaylist({ name });
       await bridge.collection.addToPlaylist({
         playlistId: created.id,
-        trackIds: [track.id]
+        itemIds: [track.id]
       });
       setOpenTrackMenuId(null);
       await playlists.refresh();

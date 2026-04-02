@@ -2,13 +2,14 @@ import { readFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { pinyin } from "pinyin-pro";
 import type { AuralBridge } from "@aural/contracts";
-import type { PlaylistId } from "@aural/domain";
+import type { BrowseMode, PlaylistId } from "@aural/domain";
 import { openAuralDatabase, AuralRepository } from "@aural/data";
 import type { SearchAlbumRecord, SearchArtistRecord, SearchPlaylistRecord, SearchSource, SearchTrackRecord } from "@aural/search";
 import { createSearchService } from "@aural/search";
 import { createLibraryService } from "@aural/library";
 import { createLyricsSnapshot } from "@aural/player";
 import { createMetadataEditor } from "./metadata-editor";
+import { createOnlineService } from "./online-provider";
 import { createReplayGainService } from "./replaygain";
 
 const buildPinyinForms = (value: string) => {
@@ -73,10 +74,16 @@ export const createAppServices = (userDataPath: string): AppServices => {
   const metadataEditor = createMetadataEditor();
   const replayGainService = createReplayGainService(repository);
   const searchService = createSearchService(createSearchSource(repository));
+  const onlineService = createOnlineService({
+    repository,
+    userDataPath,
+    resolveSetting: (key) => repository.getSetting(key)?.value ?? null
+  });
   const resolveHistoryLimit = () => {
     const configured = Number(repository.getSetting("history.maxItems")?.value ?? 300);
     return Number.isFinite(configured) ? Math.max(0, Math.floor(configured)) : 300;
   };
+  const resolveBrowseMode = (mode: BrowseMode | "all" | undefined) => (mode === "local" || mode === "online" ? mode : "all");
 
   return {
     database,
@@ -147,13 +154,34 @@ export const createAppServices = (userDataPath: string): AppServices => {
         addToPlaylist: async (input) => repository.addToPlaylist({ ...input, playlistId: asPlaylistId(input.playlistId) }),
         removeFromPlaylist: async (input) =>
           repository.removeFromPlaylist({ ...input, playlistId: asPlaylistId(input.playlistId) }),
-        toggleFavorite: async (trackId) => repository.toggleFavorite(trackId),
-        getFavorites: async () => repository.getFavorites(),
-        getRecentHistory: async (limit) => repository.getRecentHistory(Math.min(limit ?? resolveHistoryLimit(), resolveHistoryLimit())),
-        recordPlay: async (trackId) => {
-          repository.recordPlay(trackId);
+        toggleFavorite: async (itemId) => repository.toggleFavorite(itemId),
+        getFavorites: async (mode) => repository.getFavorites(resolveBrowseMode(mode)),
+        getRecentHistory: async (limit, mode) =>
+          repository.getRecentHistory(Math.min(limit ?? resolveHistoryLimit(), resolveHistoryLimit()), resolveBrowseMode(mode)),
+        recordPlay: async (itemId, sourceType, sourceId) => {
+          repository.recordPlay(itemId, sourceType, sourceId);
           repository.prunePlayHistory(resolveHistoryLimit());
         }
+      },
+      online: {
+        searchTracks: async (query) => onlineService.searchTracks(query.term, query.page, query.limit),
+        listArtists: async (query) => onlineService.listArtists(query),
+        getArtistDetail: async (artistId) => onlineService.getArtistDetail(artistId),
+        listAlbums: async (query) => onlineService.listAlbums(query),
+        getAlbumDetail: async (albumId) => onlineService.getAlbumDetail(albumId),
+        getChartsOverview: async () => onlineService.getChartsOverview(),
+        getDailyRecommendedPlaylists: async () => onlineService.getDailyRecommendedPlaylists(),
+        getHighqualityPlaylists: async (limit) => onlineService.getHighqualityPlaylists(limit),
+        getPlaylistCategories: async () => onlineService.getPlaylistCategories(),
+        getPlaylistsByCategory: async (category, limit) => onlineService.getPlaylistsByCategory(category, limit),
+        getRecommendedPlaylists: async (limit) => onlineService.getRecommendedPlaylists(limit),
+        getPlaylistDetail: async (playlistId) => onlineService.getPlaylistDetail(playlistId),
+        getTrack: async (itemId) => onlineService.getTrack(itemId),
+        resolvePlayback: async (itemId) => onlineService.resolvePlayback(itemId),
+        getLyrics: async (itemId) => onlineService.getLyrics(itemId),
+        download: async (itemId) => onlineService.download(itemId),
+        listDownloads: async () => onlineService.listDownloads(),
+        getDefaultDownloadDirectory: async () => onlineService.getDefaultDownloadDirectory()
       },
       settings: {
         getAll: async () =>
@@ -172,6 +200,17 @@ export const createAppServices = (userDataPath: string): AppServices => {
             key: record.key,
             value: record.value
           };
+        },
+        setManySettings: async (records) => {
+          const persisted = repository.setManySettings(records);
+          const historyLimitRecord = records.find((record) => record.key === "history.maxItems");
+          if (historyLimitRecord) {
+            const normalized = Number.isFinite(Number(historyLimitRecord.value))
+              ? Math.max(0, Math.floor(Number(historyLimitRecord.value)))
+              : 300;
+            repository.prunePlayHistory(normalized);
+          }
+          return persisted.map(({ key, value }) => ({ key, value }));
         }
       },
       audio: {
@@ -179,7 +218,13 @@ export const createAppServices = (userDataPath: string): AppServices => {
       },
       lyrics: {
         getLyrics: async (trackId) => {
-          const trackMedia = repository.findTrackMediaById(trackId);
+          const item = repository.findPlayableItemById(trackId);
+          if (item?.source === "online") {
+            return onlineService.getLyrics(trackId);
+          }
+
+          const targetTrackId = item?.localTrackId ?? trackId;
+          const trackMedia = repository.findTrackMediaById(targetTrackId);
           if (!trackMedia) {
             return {
               trackId,
