@@ -585,8 +585,11 @@ export const SettingsOnlineSection = ({
   onlineDownloadDirectoryDraft,
   onlineDefaultDownloadDirectory,
   onlineEffectiveDownloadDirectory,
+  onlineNeteaseCookieDraft,
   setOnlineDownloadDirectoryDraft,
+  setOnlineNeteaseCookieDraft,
   commitOnlineDownloadDirectory,
+  commitOnlineNeteaseCookie,
   chooseOnlineDownloadDirectory,
   openOnlineDownloadDirectory,
   onlinePreferDownloadedCopy,
@@ -597,8 +600,11 @@ export const SettingsOnlineSection = ({
   onlineDownloadDirectoryDraft: string;
   onlineDefaultDownloadDirectory: string;
   onlineEffectiveDownloadDirectory: string;
+  onlineNeteaseCookieDraft: string;
   setOnlineDownloadDirectoryDraft: (value: string) => void;
+  setOnlineNeteaseCookieDraft: (value: string) => void;
   commitOnlineDownloadDirectory: () => void;
+  commitOnlineNeteaseCookie: () => void;
   chooseOnlineDownloadDirectory: () => Promise<void>;
   openOnlineDownloadDirectory: () => Promise<void>;
   onlinePreferDownloadedCopy: boolean;
@@ -612,6 +618,15 @@ export const SettingsOnlineSection = ({
     />
     <div className="grid gap-5">
       <SettingsCard title="Offline cache policy" description="Decide where downloads are stored and whether cached files take priority during playback.">
+        <TextInputRow
+          label="Netease cookie"
+          desc="Optional login cookie used to read account-bound data such as liked songs and daily recommendations."
+          value={onlineNeteaseCookieDraft}
+          placeholder="Paste NETEASE_COOKIE here"
+          onChange={setOnlineNeteaseCookieDraft}
+          onCommit={commitOnlineNeteaseCookie}
+          actionLabel="Save"
+        />
         <TextInputRow
           label="Download directory"
           desc="Manual path for downloaded online tracks. Leave empty to use the default userData online-cache directory."

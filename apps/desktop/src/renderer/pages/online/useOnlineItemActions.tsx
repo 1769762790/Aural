@@ -6,6 +6,7 @@ type RefreshCallback = () => Promise<void>;
 
 interface UseOnlineItemActionsArgs {
   playlists: PlaylistSummary[];
+  allowFavoriteToggle?: boolean;
   refreshPlaylists?: RefreshCallback;
   refreshFavorites?: RefreshCallback;
   refreshHistory?: RefreshCallback;
@@ -15,6 +16,7 @@ interface UseOnlineItemActionsArgs {
 
 export const useOnlineItemActions = ({
   playlists,
+  allowFavoriteToggle = true,
   refreshPlaylists,
   refreshFavorites,
   refreshHistory,
@@ -82,16 +84,18 @@ export const useOnlineItemActions = ({
 
   const renderItemActions = (item: PlayableItem) => (
     <>
-      <button
-        type="button"
-        className="rounded-full border border-border bg-background/70 px-3 py-1 text-xs uppercase tracking-[0.18em] text-muted-foreground transition hover:bg-accent/45 hover:text-foreground"
-        onClick={(event) => {
-          event.stopPropagation();
-          void toggleFavorite(item);
-        }}
-      >
-        {item.isFavorite ? "Unsave" : "Save"}
-      </button>
+      {allowFavoriteToggle ? (
+        <button
+          type="button"
+          className="rounded-full border border-border bg-background/70 px-3 py-1 text-xs uppercase tracking-[0.18em] text-muted-foreground transition hover:bg-accent/45 hover:text-foreground"
+          onClick={(event) => {
+            event.stopPropagation();
+            void toggleFavorite(item);
+          }}
+        >
+          {item.isFavorite ? "Unsave" : "Save"}
+        </button>
+      ) : null}
       <button
         type="button"
         className="rounded-full border border-border bg-background/70 px-3 py-1 text-xs uppercase tracking-[0.18em] text-muted-foreground transition hover:bg-accent/45 hover:text-foreground"

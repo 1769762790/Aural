@@ -68,6 +68,7 @@ export const defaultSettings: Record<SettingKey, SettingValue> = {
   "online.providerBaseUrl": null,
   "online.preferDownloadedCopy": true,
   "online.downloadDirectory": null,
+  "online.neteaseCookie": null,
   "online.lastMode": "local"
 };
 

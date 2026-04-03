@@ -68,6 +68,10 @@ export const registerIpcHandlers = (services: BusinessBridge) => {
   );
 
   ipcMain.handle(`${IPC_CHANNELS.online}:searchTracks`, (_event, query) => services.online.searchTracks(query));
+  ipcMain.handle(`${IPC_CHANNELS.online}:getCurrentUser`, () => services.online.getCurrentUser());
+  ipcMain.handle(`${IPC_CHANNELS.online}:createQrLoginSession`, () => services.online.createQrLoginSession());
+  ipcMain.handle(`${IPC_CHANNELS.online}:checkQrLoginSession`, (_event, key) => services.online.checkQrLoginSession(key));
+  ipcMain.handle(`${IPC_CHANNELS.online}:getLikedTracks`, () => services.online.getLikedTracks());
   ipcMain.handle(`${IPC_CHANNELS.online}:listArtists`, (_event, query) => services.online.listArtists(query));
   ipcMain.handle(`${IPC_CHANNELS.online}:getArtistDetail`, (_event, artistId) => services.online.getArtistDetail(artistId));
   ipcMain.handle(`${IPC_CHANNELS.online}:listAlbums`, (_event, query) => services.online.listAlbums(query));

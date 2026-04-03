@@ -82,6 +82,9 @@ export const OnlinePlaylistsPage = () => {
     return cards;
   }, [dailyRecommendedPlaylists.data, highqualityPlaylists.data]);
 
+  // console.log('dailyRecommendedPlaylists', dailyRecommendedPlaylists);
+  
+
   const sectionCategories = useMemo(
     () => pickSectionCategories(playlistCategories.data ?? []),
     [playlistCategories.data]

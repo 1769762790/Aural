@@ -23,6 +23,7 @@ import {
   normalizeArtistInitial,
   normalizeArtistName
 } from "./shared";
+import { log } from "node:console";
 
 interface OnlineMetadataServiceOptions {
   repository: AuralRepository;
@@ -31,6 +32,17 @@ interface OnlineMetadataServiceOptions {
 export const createOnlineMetadataService = ({ repository }: OnlineMetadataServiceOptions) => {
   const artistSummaryCache = new Map<string, ArtistSummary>();
   const enhancedClient = createEnhancedClient();
+  const resolveNeteaseCookie = () => {
+    const value = repository.getSetting("online.neteaseCookie")?.value;
+    return typeof value === "string" && value.trim().length ? value.trim() : null;
+  };
+  const chunk = <T>(items: T[], size: number) => {
+    const result: T[][] = [];
+    for (let index = 0; index < items.length; index += size) {
+      result.push(items.slice(index, index + size));
+    }
+    return result;
+  };
 
   const ensureOnlineItem = async (itemId: string) => {
     const existing = repository.findPlayableItemById(itemId);
@@ -96,6 +108,55 @@ export const createOnlineMetadataService = ({ repository }: OnlineMetadataServic
     searchTracks: async (term: string, page = 1, limit = 20) => {
       const songs = await enhancedClient.searchSongs(term, page, limit);
       return songs.map((song) => repository.upsertPlayableItem(mapSongToPlayableInput(song)));
+    },
+    getLikedTracks: async () => {
+      const cookie = resolveNeteaseCookie();
+      if (!cookie) {
+        return [];
+      }
+
+      const uid = await enhancedClient.getCurrentUserId(cookie).catch(() => null);
+      if (!uid) {
+        return [];
+      }
+      console.log("Fetching liked tracks for user", { uid });
+      const likedIds = await enhancedClient.getLikedSongIds(uid, cookie).catch(() => []);
+      let songs = [] as Awaited<ReturnType<typeof enhancedClient.getSongDetails>>;
+
+      if (likedIds.length) {
+        const detailGroups = await Promise.all(
+          chunk(likedIds, 200).map((group) => enhancedClient.getSongDetails(group, cookie).catch(() => []))
+        );
+
+        songs = detailGroups.flat();
+      }
+
+      if (!songs.length) {
+        const userPlaylists = await enhancedClient.getUserPlaylists(uid, cookie).catch(() => []);
+        const likedPlaylist =
+          userPlaylists.find((playlist) => Number(playlist.specialType ?? 0) === 5) ??
+          userPlaylists.find((playlist) => typeof playlist.name === "string" && playlist.name.includes("喜欢")) ??
+          userPlaylists.find((playlist) => String(playlist.creator?.userId ?? "") === uid) ??
+          userPlaylists[0];
+
+        if (likedPlaylist?.id !== undefined && likedPlaylist?.id !== null) {
+          songs = await enhancedClient.getPlaylistTrackAll(String(likedPlaylist.id), cookie).catch(() => []);
+        }
+      }
+
+      if (!songs.length) {
+        return [];
+      }
+
+      const order = new Map(likedIds.map((id, index) => [id, index] as const));
+      return songs
+        .sort((left, right) => {
+          if (!order.size) {
+            return 0;
+          }
+          return (order.get(String(left.id)) ?? Number.MAX_SAFE_INTEGER) - (order.get(String(right.id)) ?? Number.MAX_SAFE_INTEGER);
+        })
+        .map((song) => repository.upsertPlayableItem(mapSongToPlayableInput(song)));
     },
     listArtists: async (query: OnlineArtistListQuery = {}) => {
       const area = Number.isFinite(Number(query.area)) ? Number(query.area) : -1;

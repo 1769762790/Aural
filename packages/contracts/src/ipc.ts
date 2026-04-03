@@ -170,6 +170,24 @@ export interface OnlineChartsOverview {
   total: number;
 }
 
+export interface OnlineUserProfile {
+  userId: string;
+  nickname: string;
+  avatarUrl: string | null;
+}
+
+export interface OnlineQrLoginSession {
+  key: string;
+  qrUrl: string;
+  qrImageUrl: string | null;
+}
+
+export interface OnlineQrLoginStatus {
+  state: "waiting" | "scanned" | "authorized" | "expired";
+  code: number;
+  user: OnlineUserProfile | null;
+}
+
 export interface OnlinePlaylistDetail {
   id: string;
   name: string;
@@ -319,6 +337,10 @@ export interface LyricsApi {
 
 export interface OnlineApi {
   searchTracks(query: OnlineSearchQuery): Promise<PlayableItem[]>;
+  getCurrentUser(): Promise<OnlineUserProfile | null>;
+  createQrLoginSession(): Promise<OnlineQrLoginSession>;
+  checkQrLoginSession(key: string): Promise<OnlineQrLoginStatus>;
+  getLikedTracks(): Promise<PlayableItem[]>;
   listArtists(query?: OnlineArtistListQuery): Promise<ArtistSummary[]>;
   getArtistDetail(artistId: string): Promise<PlayableArtistDetail | null>;
   listAlbums(query?: OnlineAlbumListQuery): Promise<OnlineAlbumSummary[]>;

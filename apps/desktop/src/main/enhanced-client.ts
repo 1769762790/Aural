@@ -46,6 +46,16 @@ export interface EnhancedPlaylistDetail {
   tracks?: EnhancedSearchSong[];
 }
 
+export interface EnhancedUserPlaylist {
+  id: number;
+  name?: string;
+  specialType?: number;
+  trackCount?: number;
+  creator?: {
+    userId?: number;
+  };
+}
+
 export interface EnhancedOnlineAlbumSummary {
   id: string;
   title: string;
@@ -80,6 +90,12 @@ export interface EnhancedChartSummary {
   preview: EnhancedChartPreviewEntry[];
 }
 
+export interface EnhancedUserProfile {
+  userId: string;
+  nickname: string;
+  avatarUrl: string | null;
+}
+
 interface EnhancedClientPayload {
   [key: string]: string | number | undefined;
 }
@@ -90,6 +106,13 @@ const enhancedApi = require("@neteasecloudmusicapienhanced/api") as {
   song_detail: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
   song_url_v1: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
   lyric: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
+  likelist: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
+  login_qr_key: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
+  login_qr_create: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
+  login_qr_check: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
+  user_account: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
+  user_playlist: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
+  playlist_track_all: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
   artist_list: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
   artist_top_song: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
   recommend_resource: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
@@ -117,6 +140,55 @@ const readSearchArtists = (payload: Record<string, unknown>) => {
 
 const readTopLevelSongs = (payload: Record<string, unknown>) =>
   Array.isArray(payload.songs) ? (payload.songs as EnhancedSearchSong[]) : readSearchSongs(payload);
+
+const readLikeList = (payload: Record<string, unknown>) => {
+  if (Array.isArray(payload.ids)) {
+    return payload.ids
+      .map((entry) => String(entry).trim())
+      .filter((entry) => entry.length > 0);
+  }
+
+  return [] as string[];
+};
+
+const readUserId = (payload: Record<string, unknown>) => {
+  const data = asRecord(payload.data);
+  const nestedPayload = data ?? payload;
+  const account = asRecord(nestedPayload.account);
+  const profile = asRecord(nestedPayload.profile);
+  const candidate = account?.id ?? profile?.userId ?? nestedPayload.userId;
+  return candidate === undefined || candidate === null ? null : String(candidate);
+};
+
+const readUserProfile = (payload: Record<string, unknown>): EnhancedUserProfile | null => {
+  const data = asRecord(payload.data);
+  const nestedPayload = data ?? payload;
+  const account = asRecord(payload.account);
+  const profile = asRecord(payload.profile);
+  const resolvedAccount = asRecord(nestedPayload.account) ?? account;
+  const resolvedProfile = asRecord(nestedPayload.profile) ?? profile;
+  const candidate = resolvedAccount?.id ?? resolvedProfile?.userId ?? nestedPayload.userId;
+  if (candidate === undefined || candidate === null) {
+    return null;
+  }
+
+  const nickname = firstNonEmptyString(
+    resolvedProfile?.nickname,
+    resolvedAccount?.userName,
+    nestedPayload.nickname
+  ) ?? `User ${candidate}`;
+  const avatarUrl = firstNonEmptyString(
+    resolvedProfile?.avatarUrl,
+    resolvedProfile?.avatarImgIdStr,
+    nestedPayload.avatarUrl
+  );
+
+  return {
+    userId: String(candidate),
+    nickname,
+    avatarUrl
+  };
+};
 
 const readTopLevelArtists = (payload: Record<string, unknown>) =>
   Array.isArray(payload.artists) ? (payload.artists as EnhancedSearchArtist[]) : readSearchArtists(payload);
@@ -156,6 +228,9 @@ const readPlaylistDetail = (payload: Record<string, unknown>) => {
   const playlist = asRecord(payload.playlist);
   return playlist ? (playlist as unknown as EnhancedPlaylistDetail) : null;
 };
+
+const readUserPlaylists = (payload: Record<string, unknown>) =>
+  Array.isArray(payload.playlist) ? (payload.playlist as EnhancedUserPlaylist[]) : [];
 
 const normalizeChartPreview = (value: unknown): EnhancedChartPreviewEntry | null => {
   const record = asRecord(value);
@@ -394,11 +469,11 @@ const readAlbumDetail = (payload: Record<string, unknown>): EnhancedOnlineAlbumD
 };
 
 const logEnhancedRequest = (pathname: string, payload: Record<string, string | number>) => {
-  console.log(`[online:enhanced-sdk] ${pathname}`, payload);
+  // console.log(`[online:enhanced-sdk] ${pathname}`, payload);
 };
 
 const logEnhancedResponse = (pathname: string, status: number) => {
-  console.log(`[online:enhanced-sdk] ${pathname} -> ${status}`);
+  // console.log(`[online:enhanced-sdk] ${pathname} -> ${status}`);
 };
 
 const toPayload = (params: EnhancedClientPayload) => {
@@ -464,6 +539,21 @@ export const createEnhancedClient = (_baseUrl?: string) => ({
     );
     return Array.isArray(payload.songs) ? ((payload.songs[0] as EnhancedSearchSong | undefined) ?? null) : null;
   },
+  getSongDetails: async (providerItemIds: string[], cookie?: string) => {
+    if (!providerItemIds.length) {
+      return [] as EnhancedSearchSong[];
+    }
+
+    const payload = await requestEnhancedJson(
+      "/song/detail",
+      {
+        ids: `[${providerItemIds.join(",")}]`,
+        cookie
+      },
+      enhancedApi.song_detail
+    );
+    return Array.isArray(payload.songs) ? (payload.songs as EnhancedSearchSong[]) : [];
+  },
   getLyrics: async (providerItemId: string) =>
     requestEnhancedJson(
       "/lyric",
@@ -472,6 +562,99 @@ export const createEnhancedClient = (_baseUrl?: string) => ({
       },
       enhancedApi.lyric
     ),
+  getCurrentUserId: async (cookie: string) => {
+    const payload = await requestEnhancedJson(
+      "/user/account",
+      {
+        cookie
+      },
+      enhancedApi.user_account
+    );
+    return readUserId(payload);
+  },
+  getCurrentUser: async (cookie: string) => {
+    const payload = await requestEnhancedJson(
+      "/user/account",
+      {
+        cookie
+      },
+      enhancedApi.user_account
+    );
+    return readUserProfile(payload);
+  },
+  createQrLoginSession: async () => {
+    const keyPayload = await requestEnhancedJson("/login/qr/key", {}, enhancedApi.login_qr_key);
+    const keyData = asRecord(keyPayload.data);
+    const key = firstNonEmptyString(keyData?.unikey, keyPayload.unikey);
+    if (!key) {
+      throw new Error("Failed to create QR login key.");
+    }
+
+    const createPayload = await requestEnhancedJson(
+      "/login/qr/create",
+      {
+        key,
+        qrimg: "true"
+      },
+      enhancedApi.login_qr_create
+    );
+    const createData = asRecord(createPayload.data);
+    const qrUrl = firstNonEmptyString(createData?.qrurl);
+    if (!qrUrl) {
+      throw new Error("Failed to create QR login image.");
+    }
+
+    return {
+      key,
+      qrUrl,
+      qrImageUrl: firstNonEmptyString(createData?.qrimg)
+    };
+  },
+  checkQrLoginSession: async (key: string) =>
+    requestEnhancedJson(
+      "/login/qr/check",
+      {
+        key
+      },
+      enhancedApi.login_qr_check
+    ),
+  getLikedSongIds: async (uid: string, cookie: string) => {
+    const payload = await requestEnhancedJson(
+      "/likelist",
+      {
+        uid,
+        cookie
+      },
+      enhancedApi.likelist
+    );
+    return readLikeList(payload);
+  },
+  getUserPlaylists: async (uid: string, cookie: string) => {
+    const payload = await requestEnhancedJson(
+      "/user/playlist",
+      {
+        uid,
+        limit: 200,
+        offset: 0,
+        cookie
+      },
+      enhancedApi.user_playlist
+    );
+    return readUserPlaylists(payload);
+  },
+  getPlaylistTrackAll: async (playlistId: string, cookie: string) => {
+    const payload = await requestEnhancedJson(
+      "/playlist/track/all",
+      {
+        id: playlistId,
+        limit: 1000,
+        offset: 0,
+        cookie
+      },
+      enhancedApi.playlist_track_all
+    );
+    return readTopLevelSongs(payload);
+  },
   listArtists: async (initial: string | number = -1, offset = 0, limit = 60, area = -1, type = -1) => {
     const payload = await requestEnhancedJson(
       "/artist/list",

@@ -51,6 +51,7 @@ export type SettingKey =
   | "online.providerBaseUrl"
   | "online.preferDownloadedCopy"
   | "online.downloadDirectory"
+  | "online.neteaseCookie"
   | "online.lastMode";
 
 export type SettingValue = string | number | boolean | null;

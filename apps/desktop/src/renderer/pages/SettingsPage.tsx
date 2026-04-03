@@ -166,8 +166,11 @@ export const SettingsPage = () => {
           onlineDownloadDirectoryDraft={state.onlineDownloadDirectoryDraft}
           onlineDefaultDownloadDirectory={state.onlineDefaultDownloadDirectory}
           onlineEffectiveDownloadDirectory={state.onlineEffectiveDownloadDirectory}
+          onlineNeteaseCookieDraft={state.onlineNeteaseCookieDraft}
           setOnlineDownloadDirectoryDraft={state.setOnlineDownloadDirectoryDraft}
+          setOnlineNeteaseCookieDraft={state.setOnlineNeteaseCookieDraft}
           commitOnlineDownloadDirectory={state.commitOnlineDownloadDirectory}
+          commitOnlineNeteaseCookie={state.commitOnlineNeteaseCookie}
           chooseOnlineDownloadDirectory={state.chooseOnlineDownloadDirectory}
           openOnlineDownloadDirectory={state.openOnlineDownloadDirectory}
           onlinePreferDownloadedCopy={state.onlinePreferDownloadedCopy}

@@ -64,6 +64,7 @@ export const useSettingsPageState = ({
   const [outputDeviceSupported, setOutputDeviceSupported] = useState(false);
   const [onlineDownloadDirectoryDraft, setOnlineDownloadDirectoryDraft] = useState("");
   const [onlineDefaultDownloadDirectory, setOnlineDefaultDownloadDirectory] = useState("");
+  const [onlineNeteaseCookieDraft, setOnlineNeteaseCookieDraft] = useState("");
 
   const folders = useAsyncResource(
     () => bridge.library.listFolders({ sortBy: "path", sortDirection: "asc" }),
@@ -502,6 +503,8 @@ export const useSettingsPageState = ({
   const channelMode: "stereo" | "mono" = channelModeValue === "mono" ? "mono" : "stereo";
   const onlineDownloadDirectoryValue = getValue("online.downloadDirectory");
   const onlineDownloadDirectory = typeof onlineDownloadDirectoryValue === "string" ? onlineDownloadDirectoryValue.trim() : "";
+  const onlineNeteaseCookieValue = getValue("online.neteaseCookie");
+  const onlineNeteaseCookie = typeof onlineNeteaseCookieValue === "string" ? onlineNeteaseCookieValue.trim() : "";
   const onlineEffectiveDownloadDirectory = onlineDownloadDirectory || onlineDefaultDownloadDirectory;
   const onlinePreferDownloadedCopy = getValue("online.preferDownloadedCopy") !== false;
   const outputDeviceOptions = useMemo(() => {
@@ -529,6 +532,10 @@ export const useSettingsPageState = ({
   useEffect(() => {
     setOnlineDownloadDirectoryDraft((current) => (current === onlineDownloadDirectory ? current : onlineDownloadDirectory));
   }, [onlineDownloadDirectory]);
+
+  useEffect(() => {
+    setOnlineNeteaseCookieDraft((current) => (current === onlineNeteaseCookie ? current : onlineNeteaseCookie));
+  }, [onlineNeteaseCookie]);
 
   useEffect(() => {
     if (!isCustomAccentValue(accent)) {
@@ -631,6 +638,15 @@ export const useSettingsPageState = ({
     }
   };
 
+  const commitOnlineNeteaseCookie = () => {
+    const normalized = onlineNeteaseCookieDraft.trim();
+    if (normalized === onlineNeteaseCookie) {
+      return;
+    }
+
+    setPersistent("online.neteaseCookie", normalized || null);
+  };
+
   return {
     pageRef,
     stickyTabsRef,
@@ -649,6 +665,8 @@ export const useSettingsPageState = ({
     onlineDownloadDirectoryDraft,
     onlineDefaultDownloadDirectory,
     onlineEffectiveDownloadDirectory,
+    onlineNeteaseCookie,
+    onlineNeteaseCookieDraft,
     onlinePreferDownloadedCopy,
     folders,
     appearanceMode,
@@ -696,6 +714,7 @@ export const useSettingsPageState = ({
     setBlacklistInput,
     setFolderPathToConfirmRemoval,
     setOnlineDownloadDirectoryDraft,
+    setOnlineNeteaseCookieDraft,
     scrollTo,
     addFolders,
     rescanFolders,
@@ -706,6 +725,7 @@ export const useSettingsPageState = ({
     commitOnlineDownloadDirectory,
     chooseOnlineDownloadDirectory,
     openOnlineDownloadDirectory,
+    commitOnlineNeteaseCookie,
     folderNote
   };
 };

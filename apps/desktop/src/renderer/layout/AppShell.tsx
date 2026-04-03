@@ -13,7 +13,6 @@ import {
   SkipForward,
   Sun
 } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
@@ -22,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { AppRuntimeBridge } from "@renderer/components/AppRuntimeBridge";
 import { GlobalSearchCommand } from "@renderer/components/GlobalSearchCommand";
 import { NowPlayingQueueDrawer } from "@renderer/components/NowPlayingQueueDrawer";
+import { OnlineAccountControl } from "@renderer/components/online-auth/OnlineAccountControl";
 import { PlayerScene } from "@renderer/components/PlayerScene";
 import { PlayerAudioBridge } from "@renderer/components/PlayerAudioBridge";
 import { SidebarNavigation } from "@renderer/components/SidebarNavigation";
@@ -215,6 +215,7 @@ export const AppShell = () => {
           <GlobalSearchCommand />
 
           <div className="window-no-drag relative z-10 flex items-center gap-4">
+            <OnlineAccountControl />
             <Button
               type="button"
               size="icon"

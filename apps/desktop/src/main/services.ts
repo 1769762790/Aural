@@ -165,6 +165,10 @@ export const createAppServices = (userDataPath: string): AppServices => {
       },
       online: {
         searchTracks: async (query) => onlineService.searchTracks(query.term, query.page, query.limit),
+        getCurrentUser: async () => onlineService.getCurrentUser(),
+        createQrLoginSession: async () => onlineService.createQrLoginSession(),
+        checkQrLoginSession: async (key) => onlineService.checkQrLoginSession(key),
+        getLikedTracks: async () => onlineService.getLikedTracks(),
         listArtists: async (query) => onlineService.listArtists(query),
         getArtistDetail: async (artistId) => onlineService.getArtistDetail(artistId),
         listAlbums: async (query) => onlineService.listAlbums(query),

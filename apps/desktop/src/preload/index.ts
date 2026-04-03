@@ -65,6 +65,10 @@ const bridge: AuralBridge = {
   },
   online: {
     searchTracks: (query) => ipcRenderer.invoke(`${IPC_CHANNELS.online}:searchTracks`, query),
+    getCurrentUser: () => ipcRenderer.invoke(`${IPC_CHANNELS.online}:getCurrentUser`),
+    createQrLoginSession: () => ipcRenderer.invoke(`${IPC_CHANNELS.online}:createQrLoginSession`),
+    checkQrLoginSession: (key) => ipcRenderer.invoke(`${IPC_CHANNELS.online}:checkQrLoginSession`, key),
+    getLikedTracks: () => ipcRenderer.invoke(`${IPC_CHANNELS.online}:getLikedTracks`),
     listArtists: (query) => ipcRenderer.invoke(`${IPC_CHANNELS.online}:listArtists`, query),
     getArtistDetail: (artistId) => ipcRenderer.invoke(`${IPC_CHANNELS.online}:getArtistDetail`, artistId),
     listAlbums: (query) => ipcRenderer.invoke(`${IPC_CHANNELS.online}:listAlbums`, query),

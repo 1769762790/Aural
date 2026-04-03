@@ -1,4 +1,5 @@
 import type { AuralRepository } from "@aural/data";
+import { createOnlineAuthService } from "./online/auth";
 import { createOnlineMetadataService } from "./online/metadata";
 import { createOnlinePlaybackService } from "./online/playback";
 
@@ -9,6 +10,7 @@ interface OnlineProviderOptions {
 }
 
 export const createOnlineService = ({ repository, userDataPath, resolveSetting }: OnlineProviderOptions) => {
+  const auth = createOnlineAuthService({ repository });
   const metadata = createOnlineMetadataService({ repository });
   const playback = createOnlinePlaybackService({
     repository,
@@ -19,6 +21,10 @@ export const createOnlineService = ({ repository, userDataPath, resolveSetting }
 
   return {
     searchTracks: metadata.searchTracks,
+    getCurrentUser: auth.getCurrentUser,
+    createQrLoginSession: auth.createQrLoginSession,
+    checkQrLoginSession: auth.checkQrLoginSession,
+    getLikedTracks: metadata.getLikedTracks,
     listArtists: metadata.listArtists,
     getArtistDetail: metadata.getArtistDetail,
     listAlbums: metadata.listAlbums,
