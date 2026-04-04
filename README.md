@@ -220,5 +220,11 @@ MIT License 📄
 * 增加git flow 工作流，完善提交代码commit 提交以及代码检测
 
 
-## 分析接入@unblockneteasemusic/server 可行性以及如何切换本地和在线数据
-https://github.com/UnblockNeteaseMusic/server
+首页重构
+
+网格布局中，带滚动加载的页面，增加淡入的动画效果
+
+设置页面重构,现在该组件内容太过耦合， 按照react 组件拆分标准重新拆分F:\code-demo\Aural\apps\desktop\src\renderer\pages\SettingsPage.tsx
+
+
+

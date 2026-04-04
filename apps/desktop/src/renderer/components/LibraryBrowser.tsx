@@ -1,7 +1,7 @@
 import { type ReactNode, useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { ArrowDownWideNarrow, Check, Grid2X2, Rows3 } from "lucide-react";
-import { DataTable } from "@renderer/components/DataTable";
+import { DataTable } from "@renderer/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {

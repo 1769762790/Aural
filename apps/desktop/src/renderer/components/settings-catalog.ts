@@ -28,6 +28,7 @@ export interface SettingsSectionDefinition {
 
 export const defaultSettings: Record<SettingKey, SettingValue> = {
   "appearance.mode": "system",
+  "appearance.layout": "vertical",
   "appearance.accent": "aurora",
   "appearance.customAccents": null,
   "appearance.motion": true,
@@ -68,6 +69,9 @@ export const defaultSettings: Record<SettingKey, SettingValue> = {
   "online.providerBaseUrl": null,
   "online.preferDownloadedCopy": true,
   "online.downloadDirectory": null,
+  "online.cacheDirectory": null,
+  "online.cacheMaxSizeGb": 1,
+  "online.musicNamingFormat": "artist-title",
   "online.neteaseCookie": null,
   "online.lastMode": "local"
 };
@@ -86,6 +90,16 @@ export const settingsSections: SettingsSectionDefinition[] = [
           { label: "System", value: "system" },
           { label: "Light", value: "light" },
           { label: "Dark", value: "dark" }
+        ]
+      },
+      {
+        key: "appearance.layout",
+        label: "Layout mode",
+        description: "Choose between the classic vertical shell and a horizontal top-navigation shell.",
+        kind: "segmented",
+        options: [
+          { label: "Vertical", value: "vertical" },
+          { label: "Horizontal", value: "horizontal" }
         ]
       },
       {

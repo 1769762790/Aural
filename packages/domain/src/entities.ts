@@ -11,6 +11,7 @@ export type LyricsAvailability = "embedded" | "file" | "remote" | "none";
 export type BrowseMode = "local" | "online";
 export type SettingKey =
   | "appearance.mode"
+  | "appearance.layout"
   | "appearance.accent"
   | "appearance.customAccents"
   | "appearance.motion"
@@ -51,6 +52,9 @@ export type SettingKey =
   | "online.providerBaseUrl"
   | "online.preferDownloadedCopy"
   | "online.downloadDirectory"
+  | "online.cacheDirectory"
+  | "online.cacheMaxSizeGb"
+  | "online.musicNamingFormat"
   | "online.neteaseCookie"
   | "online.lastMode";
 

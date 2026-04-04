@@ -37,7 +37,7 @@
 :root {
   --radius: 1.125rem;
   --titlebar-area-height: env(titlebar-area-height, 0px);
-  --background: #f5f2ec;
+  --background: #fff;
   --foreground: #14151b;
   --card: rgba(255, 255, 255, 0.86);
   --card-foreground: #14151b;
@@ -234,6 +234,15 @@
   animation-name: player-artwork-breathe-dark;
 }
 
+/* 隐藏滚动条 */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 @keyframes player-artwork-breathe {
   0%,
   100% {
@@ -305,4 +314,24 @@
     transform 160ms linear,
     filter 160ms linear;
   will-change: opacity, transform, filter;
+}
+
+
+/* 定义背景图缓慢横向滚动动画 */
+@keyframes bgScroll {
+  0% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 0% 100%; /* 横向滚动 */
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+
+/* 定义一个工具类 */
+.bg-animate {
+  animation: bgScroll 20s linear infinite;
 }

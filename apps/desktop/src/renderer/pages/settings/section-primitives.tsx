@@ -327,3 +327,52 @@ export const TextInputRow = ({
     </div>
   </div>
 );
+
+export const RadioListRow = ({
+  label,
+  desc,
+  value,
+  options,
+  onChange
+}: {
+  label: string;
+  desc: string;
+  value: string;
+  options: Array<{ label: string; value: string }>;
+  onChange: (value: string) => void;
+}) => (
+  <div className="rounded-[24px] border border-border bg-background/55 p-5">
+    <div className="mb-4 space-y-1">
+      <p className="text-sm font-semibold text-foreground">{label}</p>
+      <p className="text-sm leading-6 text-muted-foreground">{desc}</p>
+    </div>
+    <div className="space-y-2">
+      {options.map((option) => {
+        const checked = value === option.value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            className={cn(
+              "flex w-full items-center gap-3 rounded-[18px] border px-4 py-3 text-left transition-colors",
+              checked
+                ? "border-primary/35 bg-primary/10 text-foreground"
+                : "border-border bg-background/75 text-muted-foreground hover:bg-accent/35 hover:text-foreground"
+            )}
+            onClick={() => onChange(option.value)}
+          >
+            <span
+              className={cn(
+                "flex size-5 items-center justify-center rounded-full border transition-colors",
+                checked ? "border-primary bg-primary/15" : "border-border bg-background"
+              )}
+            >
+              <span className={cn("size-2.5 rounded-full", checked ? "bg-primary" : "bg-transparent")} />
+            </span>
+            <span className="text-sm font-medium">{option.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  </div>
+);

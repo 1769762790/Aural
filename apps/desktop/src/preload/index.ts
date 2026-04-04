@@ -69,8 +69,13 @@ const bridge: AuralBridge = {
     createQrLoginSession: () => ipcRenderer.invoke(`${IPC_CHANNELS.online}:createQrLoginSession`),
     checkQrLoginSession: (key) => ipcRenderer.invoke(`${IPC_CHANNELS.online}:checkQrLoginSession`, key),
     getLikedTracks: () => ipcRenderer.invoke(`${IPC_CHANNELS.online}:getLikedTracks`),
+    getDailyRecommendedSongs: () => ipcRenderer.invoke(`${IPC_CHANNELS.online}:getDailyRecommendedSongs`),
+    getPersonalFmTracks: () => ipcRenderer.invoke(`${IPC_CHANNELS.online}:getPersonalFmTracks`),
+    trashPersonalFmTrack: (itemId) => ipcRenderer.invoke(`${IPC_CHANNELS.online}:trashPersonalFmTrack`, itemId),
+    getTopArtists: (limit) => ipcRenderer.invoke(`${IPC_CHANNELS.online}:getTopArtists`, limit),
     listArtists: (query) => ipcRenderer.invoke(`${IPC_CHANNELS.online}:listArtists`, query),
     getArtistDetail: (artistId) => ipcRenderer.invoke(`${IPC_CHANNELS.online}:getArtistDetail`, artistId),
+    getNewestAlbums: (limit) => ipcRenderer.invoke(`${IPC_CHANNELS.online}:getNewestAlbums`, limit),
     listAlbums: (query) => ipcRenderer.invoke(`${IPC_CHANNELS.online}:listAlbums`, query),
     getAlbumDetail: (albumId) => ipcRenderer.invoke(`${IPC_CHANNELS.online}:getAlbumDetail`, albumId),
     getChartsOverview: () => ipcRenderer.invoke(`${IPC_CHANNELS.online}:getChartsOverview`),
@@ -85,7 +90,9 @@ const bridge: AuralBridge = {
     getLyrics: (itemId) => ipcRenderer.invoke(`${IPC_CHANNELS.online}:getLyrics`, itemId),
     download: (itemId) => ipcRenderer.invoke(`${IPC_CHANNELS.online}:download`, itemId),
     listDownloads: () => ipcRenderer.invoke(`${IPC_CHANNELS.online}:listDownloads`),
-    getDefaultDownloadDirectory: () => ipcRenderer.invoke(`${IPC_CHANNELS.online}:getDefaultDownloadDirectory`)
+    getDefaultDownloadDirectory: () => ipcRenderer.invoke(`${IPC_CHANNELS.online}:getDefaultDownloadDirectory`),
+    getDefaultCacheDirectory: () => ipcRenderer.invoke(`${IPC_CHANNELS.online}:getDefaultCacheDirectory`),
+    clearCachedMedia: () => ipcRenderer.invoke(`${IPC_CHANNELS.online}:clearCachedMedia`)
   },
   settings: {
     getAll: () => ipcRenderer.invoke(`${IPC_CHANNELS.settings}:getAll`),

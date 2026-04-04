@@ -64,7 +64,10 @@ export const useSettingsPageState = ({
   const [outputDeviceSupported, setOutputDeviceSupported] = useState(false);
   const [onlineDownloadDirectoryDraft, setOnlineDownloadDirectoryDraft] = useState("");
   const [onlineDefaultDownloadDirectory, setOnlineDefaultDownloadDirectory] = useState("");
+  const [onlineCacheDirectoryDraft, setOnlineCacheDirectoryDraft] = useState("");
+  const [onlineDefaultCacheDirectory, setOnlineDefaultCacheDirectory] = useState("");
   const [onlineNeteaseCookieDraft, setOnlineNeteaseCookieDraft] = useState("");
+  const [isClearingOnlineCache, setIsClearingOnlineCache] = useState(false);
 
   const folders = useAsyncResource(
     () => bridge.library.listFolders({ sortBy: "path", sortDirection: "asc" }),
@@ -241,6 +244,18 @@ export const useSettingsPageState = ({
     }).catch(() => {
       if (!cancelled) {
         setOnlineDefaultDownloadDirectory("");
+      }
+    });
+
+    void bridge.online.getDefaultCacheDirectory().then((targetPath) => {
+      if (cancelled) {
+        return;
+      }
+
+      setOnlineDefaultCacheDirectory(targetPath);
+    }).catch(() => {
+      if (!cancelled) {
+        setOnlineDefaultCacheDirectory("");
       }
     });
 
@@ -454,6 +469,8 @@ export const useSettingsPageState = ({
   };
 
   const appearanceMode = String(getValue("appearance.mode"));
+  const appearanceLayoutValue = String(getValue("appearance.layout") ?? "vertical");
+  const appearanceLayout: "vertical" | "horizontal" = appearanceLayoutValue === "horizontal" ? "horizontal" : "vertical";
   const followSystemTheme = appearanceMode === "system";
   const accent = String(getValue("appearance.accent"));
   const playbackMode = String(getValue("player.playbackMode"));
@@ -503,9 +520,20 @@ export const useSettingsPageState = ({
   const channelMode: "stereo" | "mono" = channelModeValue === "mono" ? "mono" : "stereo";
   const onlineDownloadDirectoryValue = getValue("online.downloadDirectory");
   const onlineDownloadDirectory = typeof onlineDownloadDirectoryValue === "string" ? onlineDownloadDirectoryValue.trim() : "";
+  const onlineCacheDirectoryValue = getValue("online.cacheDirectory");
+  const onlineCacheDirectory = typeof onlineCacheDirectoryValue === "string" ? onlineCacheDirectoryValue.trim() : "";
+  const onlineCacheMaxSizeGb = Math.max(1, Number(getValue("online.cacheMaxSizeGb") ?? 1));
+  const onlineMusicNamingFormatValue = String(getValue("online.musicNamingFormat") ?? "artist-title");
+  const onlineMusicNamingFormat: "title" | "artist-title" | "title-artist" =
+    onlineMusicNamingFormatValue === "title" || onlineMusicNamingFormatValue === "title-artist"
+      ? onlineMusicNamingFormatValue
+      : "artist-title";
   const onlineNeteaseCookieValue = getValue("online.neteaseCookie");
   const onlineNeteaseCookie = typeof onlineNeteaseCookieValue === "string" ? onlineNeteaseCookieValue.trim() : "";
+  const onlineBrowseModeValue = String(getValue("online.lastMode") ?? "local");
+  const onlineBrowseMode: "local" | "online" = onlineBrowseModeValue === "online" ? "online" : "local";
   const onlineEffectiveDownloadDirectory = onlineDownloadDirectory || onlineDefaultDownloadDirectory;
+  const onlineEffectiveCacheDirectory = onlineCacheDirectory || onlineDefaultCacheDirectory;
   const onlinePreferDownloadedCopy = getValue("online.preferDownloadedCopy") !== false;
   const outputDeviceOptions = useMemo(() => {
     if (systemOutputDevices.some((option) => option.value === outputDeviceId)) {
@@ -532,6 +560,10 @@ export const useSettingsPageState = ({
   useEffect(() => {
     setOnlineDownloadDirectoryDraft((current) => (current === onlineDownloadDirectory ? current : onlineDownloadDirectory));
   }, [onlineDownloadDirectory]);
+
+  useEffect(() => {
+    setOnlineCacheDirectoryDraft((current) => (current === onlineCacheDirectory ? current : onlineCacheDirectory));
+  }, [onlineCacheDirectory]);
 
   useEffect(() => {
     setOnlineNeteaseCookieDraft((current) => (current === onlineNeteaseCookie ? current : onlineNeteaseCookie));
@@ -638,6 +670,47 @@ export const useSettingsPageState = ({
     }
   };
 
+  const commitOnlineCacheDirectory = () => {
+    const normalized = onlineCacheDirectoryDraft.trim();
+    if (normalized === onlineCacheDirectory) {
+      return;
+    }
+
+    setPersistent("online.cacheDirectory", normalized || null);
+  };
+
+  const chooseOnlineCacheDirectory = async () => {
+    try {
+      const picked = await bridge.system.chooseFolders();
+      const nextDirectory = picked[0]?.trim();
+      if (!nextDirectory) {
+        return;
+      }
+
+      setOnlineCacheDirectoryDraft(nextDirectory);
+      await updateSetting("online.cacheDirectory", nextDirectory);
+      toast.success("Online cache directory updated.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error(`Failed to update online cache directory: ${message}`);
+    }
+  };
+
+  const openOnlineCacheDirectory = async () => {
+    const targetDirectory = onlineEffectiveCacheDirectory.trim();
+    if (!targetDirectory) {
+      toast.error("No effective online cache directory is available yet.");
+      return;
+    }
+
+    try {
+      await bridge.system.openPath(targetDirectory);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error(`Failed to open online cache directory: ${message}`);
+    }
+  };
+
   const commitOnlineNeteaseCookie = () => {
     const normalized = onlineNeteaseCookieDraft.trim();
     if (normalized === onlineNeteaseCookie) {
@@ -645,6 +718,25 @@ export const useSettingsPageState = ({
     }
 
     setPersistent("online.neteaseCookie", normalized || null);
+  };
+
+  const clearOnlineCachedMedia = async () => {
+    if (isClearingOnlineCache) {
+      return;
+    }
+
+    setIsClearingOnlineCache(true);
+    try {
+      const result = await bridge.online.clearCachedMedia();
+      const parts = ["automatic song cache", "cover image cache", "temporary lyrics cache"];
+      const clearedSize = formatBytes(result.clearedBytes ?? 0);
+      toast.success(`Cleared ${parts.join(", ")}. Removed ${result.clearedFiles} file(s)${clearedSize ? ` (${clearedSize})` : ""}.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error(`Failed to clear cached media: ${message}`);
+    } finally {
+      setIsClearingOnlineCache(false);
+    }
   };
 
   return {
@@ -665,11 +757,20 @@ export const useSettingsPageState = ({
     onlineDownloadDirectoryDraft,
     onlineDefaultDownloadDirectory,
     onlineEffectiveDownloadDirectory,
+    onlineCacheDirectory,
+    onlineCacheDirectoryDraft,
+    onlineDefaultCacheDirectory,
+    onlineEffectiveCacheDirectory,
+    onlineCacheMaxSizeGb,
+    onlineMusicNamingFormat,
     onlineNeteaseCookie,
     onlineNeteaseCookieDraft,
+    onlineBrowseMode,
     onlinePreferDownloadedCopy,
+    isClearingOnlineCache,
     folders,
     appearanceMode,
+    appearanceLayout,
     followSystemTheme,
     accent,
     playbackMode,
@@ -714,6 +815,7 @@ export const useSettingsPageState = ({
     setBlacklistInput,
     setFolderPathToConfirmRemoval,
     setOnlineDownloadDirectoryDraft,
+    setOnlineCacheDirectoryDraft,
     setOnlineNeteaseCookieDraft,
     scrollTo,
     addFolders,
@@ -725,7 +827,29 @@ export const useSettingsPageState = ({
     commitOnlineDownloadDirectory,
     chooseOnlineDownloadDirectory,
     openOnlineDownloadDirectory,
+    commitOnlineCacheDirectory,
+    chooseOnlineCacheDirectory,
+    openOnlineCacheDirectory,
     commitOnlineNeteaseCookie,
+    clearOnlineCachedMedia,
     folderNote
   };
+};
+
+const formatBytes = (value: number) => {
+  if (!Number.isFinite(value) || value <= 0) {
+    return "";
+  }
+
+  const units = ["B", "KB", "MB", "GB"];
+  let size = value;
+  let unitIndex = 0;
+
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+
+  const normalized = size >= 10 || unitIndex === 0 ? size.toFixed(0) : size.toFixed(1);
+  return `${normalized} ${units[unitIndex]}`;
 };

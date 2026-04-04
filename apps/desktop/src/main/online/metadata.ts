@@ -23,7 +23,6 @@ import {
   normalizeArtistInitial,
   normalizeArtistName
 } from "./shared";
-import { log } from "node:console";
 
 interface OnlineMetadataServiceOptions {
   repository: AuralRepository;
@@ -31,11 +30,12 @@ interface OnlineMetadataServiceOptions {
 
 export const createOnlineMetadataService = ({ repository }: OnlineMetadataServiceOptions) => {
   const artistSummaryCache = new Map<string, ArtistSummary>();
-  const enhancedClient = createEnhancedClient();
-  const resolveNeteaseCookie = () => {
-    const value = repository.getSetting("online.neteaseCookie")?.value;
-    return typeof value === "string" && value.trim().length ? value.trim() : null;
-  };
+  const enhancedClient = createEnhancedClient({
+    resolveCookie: () => {
+      const value = repository.getSetting("online.neteaseCookie")?.value;
+      return typeof value === "string" && value.trim().length ? value.trim() : null;
+    }
+  });
   const chunk = <T>(items: T[], size: number) => {
     const result: T[][] = [];
     for (let index = 0; index < items.length; index += size) {
@@ -110,29 +110,23 @@ export const createOnlineMetadataService = ({ repository }: OnlineMetadataServic
       return songs.map((song) => repository.upsertPlayableItem(mapSongToPlayableInput(song)));
     },
     getLikedTracks: async () => {
-      const cookie = resolveNeteaseCookie();
-      if (!cookie) {
-        return [];
-      }
-
-      const uid = await enhancedClient.getCurrentUserId(cookie).catch(() => null);
+      const uid = await enhancedClient.getCurrentUserId().catch(() => null);
       if (!uid) {
         return [];
       }
-      console.log("Fetching liked tracks for user", { uid });
-      const likedIds = await enhancedClient.getLikedSongIds(uid, cookie).catch(() => []);
+      const likedIds = await enhancedClient.getLikedSongIds(uid).catch(() => []);
       let songs = [] as Awaited<ReturnType<typeof enhancedClient.getSongDetails>>;
 
       if (likedIds.length) {
         const detailGroups = await Promise.all(
-          chunk(likedIds, 200).map((group) => enhancedClient.getSongDetails(group, cookie).catch(() => []))
+          chunk(likedIds, 200).map((group) => enhancedClient.getSongDetails(group).catch(() => []))
         );
 
         songs = detailGroups.flat();
       }
 
       if (!songs.length) {
-        const userPlaylists = await enhancedClient.getUserPlaylists(uid, cookie).catch(() => []);
+        const userPlaylists = await enhancedClient.getUserPlaylists(uid).catch(() => []);
         const likedPlaylist =
           userPlaylists.find((playlist) => Number(playlist.specialType ?? 0) === 5) ??
           userPlaylists.find((playlist) => typeof playlist.name === "string" && playlist.name.includes("喜欢")) ??
@@ -140,7 +134,7 @@ export const createOnlineMetadataService = ({ repository }: OnlineMetadataServic
           userPlaylists[0];
 
         if (likedPlaylist?.id !== undefined && likedPlaylist?.id !== null) {
-          songs = await enhancedClient.getPlaylistTrackAll(String(likedPlaylist.id), cookie).catch(() => []);
+          songs = await enhancedClient.getPlaylistTrackAll(String(likedPlaylist.id)).catch(() => []);
         }
       }
 
@@ -158,6 +152,28 @@ export const createOnlineMetadataService = ({ repository }: OnlineMetadataServic
         })
         .map((song) => repository.upsertPlayableItem(mapSongToPlayableInput(song)));
     },
+    getDailyRecommendedSongs: async () => {
+      const songs = await enhancedClient.getDailyRecommendedSongs().catch(() => []);
+      return songs.map((song) => repository.upsertPlayableItem(mapSongToPlayableInput(song)));
+    },
+    getPersonalFmTracks: async () => {
+      const songs = await enhancedClient.getPersonalFmSongs().catch(() => []);
+      return songs.map((song) => repository.upsertPlayableItem(mapSongToPlayableInput(song)));
+    },
+    trashPersonalFmTrack: async (itemId: string) => {
+      const providerItemId = extractProviderItemIdFromItemId(itemId);
+      if (!providerItemId) {
+        return false;
+      }
+
+      return enhancedClient.trashPersonalFmSong(providerItemId).catch(() => false);
+    },
+    getTopArtists: async (limit = 50) => {
+      const artists = await enhancedClient.getTopArtists(Math.max(1, Math.min(100, limit)), 0);
+      return cacheArtistSummaries(artists.map(mapArtistToSummary));
+    },
+    getNewestAlbums: async (limit = 10): Promise<OnlineAlbumSummary[]> =>
+      enhancedClient.getNewestAlbums(Math.max(1, Math.min(50, limit))).catch(() => []),
     listArtists: async (query: OnlineArtistListQuery = {}) => {
       const area = Number.isFinite(Number(query.area)) ? Number(query.area) : -1;
       const type = Number.isFinite(Number(query.type)) ? Number(query.type) : -1;

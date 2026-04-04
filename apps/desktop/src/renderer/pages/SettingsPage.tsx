@@ -1,5 +1,6 @@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useSettingsController } from "@renderer/hooks/useSettingsController";
 import { useLibraryStore } from "@renderer/stores/libraryStore";
 import { usePlayerStore } from "@renderer/stores/playerStore";
@@ -15,6 +16,8 @@ import { TAB_SECTION_IDS, TABS } from "./settings/settings-page.utils";
 import { useSettingsPageState } from "./settings/useSettingsPageState";
 
 export const SettingsPage = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { getValue, updateSetting } = useSettingsController();
   const revision = useLibraryStore((state) => state.revision);
   const markLibraryChanged = useLibraryStore((state) => state.markLibraryChanged);
@@ -30,6 +33,21 @@ export const SettingsPage = () => {
     currentTrack,
     clearPlayback
   });
+
+  const handleBrowseModeChange = async (mode: "local" | "online") => {
+    await updateSetting("online.lastMode", mode);
+
+    if (mode === "online") {
+      if (!location.pathname.startsWith("/online")) {
+        void navigate("/online");
+      }
+      return;
+    }
+
+    if (location.pathname.startsWith("/online")) {
+      void navigate("/");
+    }
+  };
 
   return (
     <div ref={state.pageRef} className="flex flex-col gap-6">
@@ -66,6 +84,7 @@ export const SettingsPage = () => {
           followSystemTheme={state.followSystemTheme}
           resolvedTheme={resolvedTheme}
           appearanceMode={state.appearanceMode}
+          appearanceLayout={state.appearanceLayout}
           accent={state.accent}
           accentOptions={state.accentOptions}
           isAccentPickerOpen={state.isAccentPickerOpen}
@@ -166,14 +185,27 @@ export const SettingsPage = () => {
           onlineDownloadDirectoryDraft={state.onlineDownloadDirectoryDraft}
           onlineDefaultDownloadDirectory={state.onlineDefaultDownloadDirectory}
           onlineEffectiveDownloadDirectory={state.onlineEffectiveDownloadDirectory}
+          onlineCacheDirectoryDraft={state.onlineCacheDirectoryDraft}
+          onlineDefaultCacheDirectory={state.onlineDefaultCacheDirectory}
+          onlineEffectiveCacheDirectory={state.onlineEffectiveCacheDirectory}
+          onlineCacheMaxSizeGb={state.onlineCacheMaxSizeGb}
+          onlineMusicNamingFormat={state.onlineMusicNamingFormat}
           onlineNeteaseCookieDraft={state.onlineNeteaseCookieDraft}
+          setOnlineCacheDirectoryDraft={state.setOnlineCacheDirectoryDraft}
           setOnlineDownloadDirectoryDraft={state.setOnlineDownloadDirectoryDraft}
           setOnlineNeteaseCookieDraft={state.setOnlineNeteaseCookieDraft}
+          commitOnlineCacheDirectory={state.commitOnlineCacheDirectory}
           commitOnlineDownloadDirectory={state.commitOnlineDownloadDirectory}
           commitOnlineNeteaseCookie={state.commitOnlineNeteaseCookie}
+          chooseOnlineCacheDirectory={state.chooseOnlineCacheDirectory}
           chooseOnlineDownloadDirectory={state.chooseOnlineDownloadDirectory}
+          openOnlineCacheDirectory={state.openOnlineCacheDirectory}
           openOnlineDownloadDirectory={state.openOnlineDownloadDirectory}
           onlinePreferDownloadedCopy={state.onlinePreferDownloadedCopy}
+          onlineBrowseMode={state.onlineBrowseMode}
+          setBrowseModePreference={handleBrowseModeChange}
+          isClearingOnlineCache={state.isClearingOnlineCache}
+          clearOnlineCachedMedia={state.clearOnlineCachedMedia}
           setPersistent={state.setPersistent}
         />
       </div>

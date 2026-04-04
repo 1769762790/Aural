@@ -169,8 +169,13 @@ export const createAppServices = (userDataPath: string): AppServices => {
         createQrLoginSession: async () => onlineService.createQrLoginSession(),
         checkQrLoginSession: async (key) => onlineService.checkQrLoginSession(key),
         getLikedTracks: async () => onlineService.getLikedTracks(),
+        getDailyRecommendedSongs: async () => onlineService.getDailyRecommendedSongs(),
+        getPersonalFmTracks: async () => onlineService.getPersonalFmTracks(),
+        trashPersonalFmTrack: async (itemId) => onlineService.trashPersonalFmTrack(itemId),
+        getTopArtists: async (limit) => onlineService.getTopArtists(limit),
         listArtists: async (query) => onlineService.listArtists(query),
         getArtistDetail: async (artistId) => onlineService.getArtistDetail(artistId),
+        getNewestAlbums: async (limit) => onlineService.getNewestAlbums(limit),
         listAlbums: async (query) => onlineService.listAlbums(query),
         getAlbumDetail: async (albumId) => onlineService.getAlbumDetail(albumId),
         getChartsOverview: async () => onlineService.getChartsOverview(),
@@ -185,7 +190,9 @@ export const createAppServices = (userDataPath: string): AppServices => {
         getLyrics: async (itemId) => onlineService.getLyrics(itemId),
         download: async (itemId) => onlineService.download(itemId),
         listDownloads: async () => onlineService.listDownloads(),
-        getDefaultDownloadDirectory: async () => onlineService.getDefaultDownloadDirectory()
+        getDefaultDownloadDirectory: async () => onlineService.getDefaultDownloadDirectory(),
+        getDefaultCacheDirectory: async () => onlineService.getDefaultCacheDirectory(),
+        clearCachedMedia: async () => onlineService.clearCachedMedia()
       },
       settings: {
         getAll: async () =>

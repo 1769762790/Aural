@@ -25,6 +25,23 @@ export const resolveDownloadDirectory = (userDataPath: string, configured: unkno
   return path.join(userDataPath, "online-cache", DEFAULT_PROVIDER);
 };
 
+export const resolveCacheDirectory = (userDataPath: string, configured: unknown) => {
+  if (typeof configured === "string" && configured.trim().length) {
+    return configured.trim();
+  }
+
+  return path.join(userDataPath, "online-cache", "_managed-cache");
+};
+
+export const resolveStreamCacheDirectory = (userDataPath: string, configured: unknown = null) =>
+  path.join(resolveCacheDirectory(userDataPath, configured), "stream");
+
+export const resolveImageCacheDirectory = (userDataPath: string, configured: unknown = null) =>
+  path.join(resolveCacheDirectory(userDataPath, configured), "images");
+
+export const resolveLyricsCacheDirectory = (userDataPath: string, configured: unknown = null) =>
+  path.join(resolveCacheDirectory(userDataPath, configured), "lyrics");
+
 export const fileExists = async (targetPath: string) => {
   try {
     await access(targetPath);
@@ -42,11 +59,13 @@ export const extractProviderItemIdFromItemId = (itemId: string) => {
 export const normalizeArtistName = (value: string) => value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
 
 export const mapSongToPlayableInput = (song: EnhancedSearchSong) => {
-  const artist = (song.ar ?? [])
+  const artistEntries = song.ar ?? song.artists ?? [];
+  const albumRecord = song.al ?? song.album ?? null;
+  const artist = artistEntries
     .map((entry) => entry.name?.trim())
     .filter((value): value is string => Boolean(value))
     .join(", ");
-  const album = song.al?.name?.trim() ?? "Online";
+  const album = albumRecord?.name?.trim() ?? "Online";
   const title = song.name?.trim() || `Track ${song.id}`;
   const providerItemId = String(song.id);
 
@@ -59,9 +78,9 @@ export const mapSongToPlayableInput = (song: EnhancedSearchSong) => {
     artist: artist || "Unknown Artist",
     album,
     albumArtist: artist || "Unknown Artist",
-    duration: Math.max(0, Number(song.dt ?? 0) / 1000),
+    duration: Math.max(0, Number(song.dt ?? song.duration ?? 0) / 1000),
     format: "STREAM",
-    coverUrl: song.al?.picUrl ?? null,
+    coverUrl: albumRecord?.picUrl ?? null,
     lyricsAvailability: "remote" as const,
     status: "ready" as const
   };

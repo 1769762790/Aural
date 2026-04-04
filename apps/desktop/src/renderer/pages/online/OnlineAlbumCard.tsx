@@ -12,8 +12,7 @@ export const OnlineAlbumCard = ({ album, onOpen }: OnlineAlbumCardProps) => {
     : { backgroundImage: gradientForSeed(`online-album:${album.id}`) };
 
   return (
-    <button
-      type="button"
+    <div
       className="group flex w-full flex-col gap-4 text-left"
       onClick={() => onOpen(album.id)}
     >
@@ -35,6 +34,6 @@ export const OnlineAlbumCard = ({ album, onOpen }: OnlineAlbumCardProps) => {
           {album.year ? <span className="text-xs text-muted-foreground">{album.year}</span> : null}
         </div>
       </div>
-    </button>
+    </div>
   );
 };

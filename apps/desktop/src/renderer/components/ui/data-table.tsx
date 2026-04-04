@@ -21,6 +21,12 @@ import {
   TableHeader,
   TableRow
 } from "@/components/ui/table";
+
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+
 import { cn } from "@/lib/utils";
 
 interface DataTableProps<TData, TValue> {
@@ -39,6 +45,7 @@ interface DataTableProps<TData, TValue> {
   onRowClick?: (row: Row<TData>) => void;
   onRowDoubleClick?: (row: Row<TData>) => void;
   rowClassName?: string | ((row: Row<TData>) => string | undefined);
+  renderRowContextMenu?: (row: Row<TData>) => ReactNode;
 }
 
 interface DataTableColumnMeta {
@@ -61,7 +68,8 @@ export function DataTable<TData, TValue>({
   getRowId,
   onRowClick,
   onRowDoubleClick,
-  rowClassName
+  rowClassName,
+  renderRowContextMenu
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>(initialSorting);
 
@@ -123,8 +131,10 @@ export function DataTable<TData, TValue>({
               </TableCell>
             </TableRow>
           ) : rows.length ? (
-            rows.map((row) => (
-              <TableRow
+            rows.map((row) => {
+              const rowContextMenu = renderRowContextMenu?.(row);
+              const tableRow = (
+                <TableRow
                 key={row.id}
                 data-state={row.getIsSelected() && "selected"}
                 className={cn("group", resolvedRowClassName(row))}
@@ -141,7 +151,19 @@ export function DataTable<TData, TValue>({
                   );
                 })}
               </TableRow>
-            ))
+              )
+              if (rowContextMenu) {
+                return (
+                  <ContextMenu key={row.id}>
+                    <ContextMenuTrigger asChild>
+                      {tableRow}
+                    </ContextMenuTrigger>
+                    {rowContextMenu}
+                  </ContextMenu>
+                )
+              }
+              return tableRow;
+            })
           ) : (
             <TableRow className="hover:bg-transparent">
               <TableCell colSpan={columns.length} className="px-6 py-14 text-center">

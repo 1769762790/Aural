@@ -2,7 +2,7 @@ import type { UpdateTrackMetadataInput } from "@aural/contracts";
 import type { Track } from "@aural/domain";
 import { Play, Shuffle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DataTable } from "@renderer/components/DataTable";
+import { DataTable } from "@renderer/components/ui/data-table";
 import { DeleteTrackDialog } from "@renderer/components/song-library/DeleteTrackDialog";
 import { EditMetadataDialog } from "@renderer/components/song-library/EditMetadataDialog";
 import { useSongLibraryColumns } from "@renderer/components/song-library/song-library-columns";

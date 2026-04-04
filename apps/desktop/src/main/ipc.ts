@@ -72,8 +72,13 @@ export const registerIpcHandlers = (services: BusinessBridge) => {
   ipcMain.handle(`${IPC_CHANNELS.online}:createQrLoginSession`, () => services.online.createQrLoginSession());
   ipcMain.handle(`${IPC_CHANNELS.online}:checkQrLoginSession`, (_event, key) => services.online.checkQrLoginSession(key));
   ipcMain.handle(`${IPC_CHANNELS.online}:getLikedTracks`, () => services.online.getLikedTracks());
+  ipcMain.handle(`${IPC_CHANNELS.online}:getDailyRecommendedSongs`, () => services.online.getDailyRecommendedSongs());
+  ipcMain.handle(`${IPC_CHANNELS.online}:getPersonalFmTracks`, () => services.online.getPersonalFmTracks());
+  ipcMain.handle(`${IPC_CHANNELS.online}:trashPersonalFmTrack`, (_event, itemId) => services.online.trashPersonalFmTrack(itemId));
+  ipcMain.handle(`${IPC_CHANNELS.online}:getTopArtists`, (_event, limit) => services.online.getTopArtists(limit));
   ipcMain.handle(`${IPC_CHANNELS.online}:listArtists`, (_event, query) => services.online.listArtists(query));
   ipcMain.handle(`${IPC_CHANNELS.online}:getArtistDetail`, (_event, artistId) => services.online.getArtistDetail(artistId));
+  ipcMain.handle(`${IPC_CHANNELS.online}:getNewestAlbums`, (_event, limit) => services.online.getNewestAlbums(limit));
   ipcMain.handle(`${IPC_CHANNELS.online}:listAlbums`, (_event, query) => services.online.listAlbums(query));
   ipcMain.handle(`${IPC_CHANNELS.online}:getAlbumDetail`, (_event, albumId) => services.online.getAlbumDetail(albumId));
   ipcMain.handle(`${IPC_CHANNELS.online}:getChartsOverview`, () => services.online.getChartsOverview());
@@ -91,6 +96,8 @@ export const registerIpcHandlers = (services: BusinessBridge) => {
   ipcMain.handle(`${IPC_CHANNELS.online}:download`, (_event, itemId) => services.online.download(itemId));
   ipcMain.handle(`${IPC_CHANNELS.online}:listDownloads`, () => services.online.listDownloads());
   ipcMain.handle(`${IPC_CHANNELS.online}:getDefaultDownloadDirectory`, () => services.online.getDefaultDownloadDirectory());
+  ipcMain.handle(`${IPC_CHANNELS.online}:getDefaultCacheDirectory`, () => services.online.getDefaultCacheDirectory());
+  ipcMain.handle(`${IPC_CHANNELS.online}:clearCachedMedia`, () => services.online.clearCachedMedia());
 
   ipcMain.handle(`${IPC_CHANNELS.settings}:getAll`, () => services.settings.getAll());
   ipcMain.handle(`${IPC_CHANNELS.settings}:getSetting`, (_event, key) => services.settings.getSetting(key));

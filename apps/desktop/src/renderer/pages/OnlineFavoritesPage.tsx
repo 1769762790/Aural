@@ -30,7 +30,7 @@ export const OnlineFavoritesPage = () => {
 
   return (
     <OnlinePageShell
-      title="Online favorites"
+      title=""
       description={
         hasRemoteCookie
           ? "Signed-in liked songs are loaded from your Netease account and stay separated from local-library favorites."

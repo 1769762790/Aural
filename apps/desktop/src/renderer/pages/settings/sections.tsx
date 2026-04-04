@@ -1,7 +1,17 @@
 import { Check, Cloud, FolderSearch, Loader2, PlayCircle, Plus, RefreshCw, Sparkles, Trash2, Volume2, X } from "lucide-react";
 import type { SettingKey, SettingValue } from "@aural/domain";
 import { Accordion, AccordionContent, AccordionItem } from "@/components/ui/accordion";
-import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ColorPicker, ColorPickerHex, ColorPickerInput } from "@/components/ui/color-picker";
@@ -10,7 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import type { Draft } from "./settings-page.utils";
-import { Intro, RangeRow, SegmentRow, SelectRow, SettingsCard, TextInputRow, ToggleRow } from "./section-primitives";
+import { Intro, RadioListRow, RangeRow, SegmentRow, SelectRow, SettingsCard, TextInputRow, ToggleRow } from "./section-primitives";
 
 export const SettingsAppearanceSection = ({
   sectionId,
@@ -18,6 +28,7 @@ export const SettingsAppearanceSection = ({
   followSystemTheme,
   resolvedTheme,
   appearanceMode,
+  appearanceLayout,
   accent,
   accentOptions,
   isAccentPickerOpen,
@@ -41,6 +52,7 @@ export const SettingsAppearanceSection = ({
   followSystemTheme: boolean;
   resolvedTheme: "light" | "dark";
   appearanceMode: string;
+  appearanceLayout: "vertical" | "horizontal";
   accent: string;
   accentOptions: Array<{ value: string; label: string; swatch: string; isCustom: boolean }>;
   isAccentPickerOpen: boolean;
@@ -81,6 +93,14 @@ export const SettingsAppearanceSection = ({
           options={[["Dark", "dark"], ["Light", "light"]]}
           onChange={(value) => setPersistent("appearance.mode", value)}
           disabled={followSystemTheme}
+          live
+        />
+        <SegmentRow
+          label="Layout"
+          desc="Switch between the classic left-navigation shell and a horizontal top-navigation shell."
+          value={appearanceLayout}
+          options={[["Vertical", "vertical"], ["Horizontal", "horizontal"]]}
+          onChange={(value) => setPersistent("appearance.layout", value)}
           live
         />
         <div className="rounded-[24px] border border-border bg-background/50 p-5">
@@ -585,14 +605,27 @@ export const SettingsOnlineSection = ({
   onlineDownloadDirectoryDraft,
   onlineDefaultDownloadDirectory,
   onlineEffectiveDownloadDirectory,
+  onlineCacheDirectoryDraft,
+  onlineDefaultCacheDirectory,
+  onlineEffectiveCacheDirectory,
+  onlineCacheMaxSizeGb,
+  onlineMusicNamingFormat,
   onlineNeteaseCookieDraft,
+  onlineBrowseMode,
   setOnlineDownloadDirectoryDraft,
+  setOnlineCacheDirectoryDraft,
   setOnlineNeteaseCookieDraft,
   commitOnlineDownloadDirectory,
+  commitOnlineCacheDirectory,
   commitOnlineNeteaseCookie,
   chooseOnlineDownloadDirectory,
+  chooseOnlineCacheDirectory,
   openOnlineDownloadDirectory,
+  openOnlineCacheDirectory,
   onlinePreferDownloadedCopy,
+  setBrowseModePreference,
+  isClearingOnlineCache,
+  clearOnlineCachedMedia,
   setPersistent
 }: {
   sectionId: string;
@@ -600,14 +633,27 @@ export const SettingsOnlineSection = ({
   onlineDownloadDirectoryDraft: string;
   onlineDefaultDownloadDirectory: string;
   onlineEffectiveDownloadDirectory: string;
+  onlineCacheDirectoryDraft: string;
+  onlineDefaultCacheDirectory: string;
+  onlineEffectiveCacheDirectory: string;
+  onlineCacheMaxSizeGb: number;
+  onlineMusicNamingFormat: "title" | "artist-title" | "title-artist";
   onlineNeteaseCookieDraft: string;
+  onlineBrowseMode: "local" | "online";
   setOnlineDownloadDirectoryDraft: (value: string) => void;
+  setOnlineCacheDirectoryDraft: (value: string) => void;
   setOnlineNeteaseCookieDraft: (value: string) => void;
   commitOnlineDownloadDirectory: () => void;
+  commitOnlineCacheDirectory: () => void;
   commitOnlineNeteaseCookie: () => void;
   chooseOnlineDownloadDirectory: () => Promise<void>;
+  chooseOnlineCacheDirectory: () => Promise<void>;
   openOnlineDownloadDirectory: () => Promise<void>;
+  openOnlineCacheDirectory: () => Promise<void>;
   onlinePreferDownloadedCopy: boolean;
+  setBrowseModePreference: (mode: "local" | "online") => Promise<void>;
+  isClearingOnlineCache: boolean;
+  clearOnlineCachedMedia: () => Promise<void>;
   setPersistent: (key: SettingKey, value: SettingValue) => void;
 }) => (
   <section id={sectionId} data-settings-tab="online" ref={setSectionRef} className="scroll-mt-28 space-y-6">
@@ -618,6 +664,16 @@ export const SettingsOnlineSection = ({
     />
     <div className="grid gap-5">
       <SettingsCard title="Offline cache policy" description="Decide where downloads are stored and whether cached files take priority during playback.">
+        <SegmentRow
+          label="Default browse mode"
+          desc="Choose whether Aural should open in the local library or online experience by default."
+          value={onlineBrowseMode}
+          options={[["Local", "local"], ["Online", "online"]]}
+          onChange={(value) => {
+            void setBrowseModePreference(value as "local" | "online");
+          }}
+          live
+        />
         <TextInputRow
           label="Netease cookie"
           desc="Optional login cookie used to read account-bound data such as liked songs and daily recommendations."
@@ -656,6 +712,93 @@ export const SettingsOnlineSection = ({
           onChange={(value) => setPersistent("online.preferDownloadedCopy", value)}
           live
         />
+        <TextInputRow
+          label="Cache directory"
+          desc="Automatic song, cover image, and lyrics cache are stored here. Manual downloads stay in the download directory above."
+          value={onlineCacheDirectoryDraft}
+          placeholder={onlineDefaultCacheDirectory || "Loading default cache directory..."}
+          onChange={setOnlineCacheDirectoryDraft}
+          onCommit={commitOnlineCacheDirectory}
+          actionLabel="Open"
+          onAction={() => {
+            void openOnlineCacheDirectory();
+          }}
+          secondaryActionLabel="Change"
+          onSecondaryAction={() => {
+            void chooseOnlineCacheDirectory();
+          }}
+        />
+        <div className="rounded-[20px] border border-dashed border-border bg-background/40 px-4 py-3">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Effective cache directory</p>
+          <p className="mt-2 break-all text-sm leading-6 text-foreground">
+            {onlineEffectiveCacheDirectory || "Resolving default online cache directory..."}
+          </p>
+        </div>
+        <RangeRow
+          label="Cache size limit"
+          desc="Keep automatic cache under this size budget. Older cached media is trimmed first."
+          value={onlineCacheMaxSizeGb}
+          min={1}
+          max={10}
+          step={1}
+          suffix=" GB"
+          onChange={(value) => setPersistent("online.cacheMaxSizeGb", Math.max(1, Math.round(value)))}
+        />
+        <RadioListRow
+          label="Music file naming"
+          desc="Choose how downloaded online tracks are named when Aural writes them to disk."
+          value={onlineMusicNamingFormat}
+          options={[
+            { label: "Song title", value: "title" },
+            { label: "Artist - Song title", value: "artist-title" },
+            { label: "Song title - Artist", value: "title-artist" }
+          ]}
+          onChange={(value) => setPersistent("online.musicNamingFormat", value)}
+        />
+        <div className="rounded-[24px] border border-border bg-background/50 p-5">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-foreground">Clear cached media</p>
+              <p className="text-sm leading-6 text-muted-foreground">
+                Remove automatic song, cover image, and temporary lyrics cache immediately. Manual downloads are preserved.
+              </p>
+            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button type="button" variant="outline" className="rounded-full" disabled={isClearingOnlineCache}>
+                  立即清除缓存
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="rounded-[20px] border border-border bg-popover/98">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear automatic online cache?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This removes automatic song cache, online cover cache, and temporary lyrics cache. Manual downloads and local library artwork will stay untouched.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isClearingOnlineCache}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="rounded-full"
+                    disabled={isClearingOnlineCache}
+                    onClick={() => {
+                      void clearOnlineCachedMedia();
+                    }}
+                  >
+                    {isClearingOnlineCache ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Loader2 className="size-4 animate-spin" />
+                        Clearing...
+                      </span>
+                    ) : (
+                      "Clear cache now"
+                    )}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        </div>
       </SettingsCard>
     </div>
   </section>

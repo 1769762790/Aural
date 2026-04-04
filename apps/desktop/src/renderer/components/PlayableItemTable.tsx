@@ -89,7 +89,7 @@ export const PlayableItemTable = ({
               <div className="truncate text-base text-muted-foreground">{item.artist}</div>
               <div className="truncate text-base italic text-muted-foreground/80">{item.album}</div>
               <div className="text-right text-sm text-muted-foreground">{formatDuration(item.duration)}</div>
-              <div className="flex items-center justify-end gap-3">{renderItemActions?.(item) ?? null}</div>
+              {/* <div className="flex items-center justify-end gap-3">{renderItemActions?.(item) ?? null}</div> */}
             </button>
           );
         })}

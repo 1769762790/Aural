@@ -57,10 +57,10 @@ export const OnlinePlaylistsPage = () => {
       id: dailyPlaylist?.id ?? "__placeholder_daily__",
       seed: dailyPlaylist?.id ?? "online-playlists:daily",
       badge: "Daily Playlist",
-      title: "每日歌单",
+      title: "私人雷达",
       subtitle: dailyPlaylist
         ? `${dailyPlaylist.title} • ${formatCount(dailyPlaylist.trackCount, "tracks")}`
-        : "每日歌单暂时不可用，请稍后再试。",
+        : "私人雷达暂时不可用，请稍后再试。",
       coverPath: null,
       coverUrl: dailyPlaylist?.coverUrl ?? null,
       disabled: !dailyPlaylist

@@ -1,38 +1,37 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import type { BrowseMode } from "@aural/domain";
-import { BarChart3, CircleUserRound, Clock3, Disc3, Download, Heart, Home, ListMusic, Settings2, type LucideIcon } from "lucide-react";
+import { BarChart3, CircleUserRound, Clock3, Disc3, Heart, Home, ListMusic, type LucideIcon } from "lucide-react";
 import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList } from "@/components/ui/navigation-menu";
 import { cn } from "@/lib/utils";
 
-interface SidebarNavItem {
+export interface SidebarNavItem {
   to: string;
   label: string;
   note: string;
   icon: LucideIcon;
 }
 
-const localNavItems: SidebarNavItem[] = [
+export const localNavItems: SidebarNavItem[] = [
   { to: "/", label: "Home", note: "", icon: Home },
   { to: "/songs", label: "Songs", note: "", icon: ListMusic },
   { to: "/artists", label: "Artists", note: "", icon: CircleUserRound },
   { to: "/albums", label: "Albums", note: "", icon: Disc3 },
   { to: "/collection", label: "Playlists", note: "", icon: ListMusic },
   { to: "/favorites", label: "Favorites", note: "", icon: Heart },
-  { to: "/recent", label: "Recent", note: "", icon: Clock3 },
-  { to: "/settings", label: "Settings", note: "", icon: Settings2 }
+  { to: "/recent", label: "Recent", note: "", icon: Clock3 }
 ];
 
-const onlineNavItems: SidebarNavItem[] = [
+export const onlineNavItems: SidebarNavItem[] = [
+  { to: "/online", label: "Home", note: "", icon: Home },
   { to: "/online/artists", label: "Artists", note: "", icon: CircleUserRound },
   { to: "/online/albums", label: "Albums", note: "", icon: Disc3 },
   { to: "/online/charts", label: "Charts", note: "", icon: BarChart3 },
   { to: "/online/favorites", label: "Favorites", note: "", icon: Heart },
-  { to: "/online/history", label: "History", note: "", icon: Clock3 },
-  { to: "/online/playlists", label: "Playlists", note: "", icon: ListMusic },
-  { to: "/online/downloads", label: "Downloads", note: "", icon: Download },
-  { to: "/settings", label: "Settings", note: "", icon: Settings2 }
+  { to: "/online/playlists", label: "Playlists", note: "", icon: ListMusic }
 ];
+
+export const getNavigationItemsForMode = (mode: BrowseMode) => (mode === "online" ? onlineNavItems : localNavItems);
 
 export const SidebarNavigation = ({ mode }: { mode: BrowseMode }) => {
   const location = useLocation();
@@ -44,7 +43,7 @@ export const SidebarNavigation = ({ mode }: { mode: BrowseMode }) => {
     opacity: 0
   });
 
-  const navItems = mode === "online" ? onlineNavItems : localNavItems;
+  const navItems = getNavigationItemsForMode(mode);
 
   const matchesItemPath = (to: string) => {
     if (to === "/") {

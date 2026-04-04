@@ -7,7 +7,12 @@ interface OnlineAuthServiceOptions {
 }
 
 export const createOnlineAuthService = ({ repository }: OnlineAuthServiceOptions) => {
-  const enhancedClient = createEnhancedClient();
+  const enhancedClient = createEnhancedClient({
+    resolveCookie: () => {
+      const value = repository.getSetting("online.neteaseCookie")?.value;
+      return typeof value === "string" && value.trim().length ? value.trim() : null;
+    }
+  });
 
   const resolveCookie = () => {
     const value = repository.getSetting("online.neteaseCookie")?.value;
@@ -20,7 +25,7 @@ export const createOnlineAuthService = ({ repository }: OnlineAuthServiceOptions
       return null;
     }
 
-    return enhancedClient.getCurrentUser(cookie).catch(() => null);
+    return enhancedClient.getCurrentUser().catch(() => null);
   };
 
   const createQrLoginSession = async (): Promise<OnlineQrLoginSession> => enhancedClient.createQrLoginSession();

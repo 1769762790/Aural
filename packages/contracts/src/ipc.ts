@@ -276,6 +276,11 @@ export interface DownloadedAssetRecord {
   downloadedAt: string | null;
 }
 
+export interface ClearCachedMediaResult {
+  clearedFiles: number;
+  clearedBytes?: number;
+}
+
 export interface SystemApi {
   chooseFolders(): Promise<string[]>;
   openPath(path: string): Promise<void>;
@@ -341,8 +346,13 @@ export interface OnlineApi {
   createQrLoginSession(): Promise<OnlineQrLoginSession>;
   checkQrLoginSession(key: string): Promise<OnlineQrLoginStatus>;
   getLikedTracks(): Promise<PlayableItem[]>;
+  getDailyRecommendedSongs(): Promise<PlayableItem[]>;
+  getPersonalFmTracks(): Promise<PlayableItem[]>;
+  trashPersonalFmTrack(itemId: string): Promise<boolean>;
+  getTopArtists(limit?: number): Promise<ArtistSummary[]>;
   listArtists(query?: OnlineArtistListQuery): Promise<ArtistSummary[]>;
   getArtistDetail(artistId: string): Promise<PlayableArtistDetail | null>;
+  getNewestAlbums(limit?: number): Promise<OnlineAlbumSummary[]>;
   listAlbums(query?: OnlineAlbumListQuery): Promise<OnlineAlbumSummary[]>;
   getAlbumDetail(albumId: string): Promise<OnlineAlbumDetail | null>;
   getChartsOverview(): Promise<OnlineChartsOverview>;
@@ -358,6 +368,8 @@ export interface OnlineApi {
   download(itemId: string): Promise<DownloadedAssetRecord | null>;
   listDownloads(): Promise<DownloadedAssetRecord[]>;
   getDefaultDownloadDirectory(): Promise<string>;
+  getDefaultCacheDirectory(): Promise<string>;
+  clearCachedMedia(): Promise<ClearCachedMediaResult>;
 }
 
 export interface AuralBridge {

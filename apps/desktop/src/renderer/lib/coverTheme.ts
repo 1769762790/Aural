@@ -274,6 +274,7 @@ export const extractCoverTheme = async (coverUrl: string, theme?: CoverThemeMode
   return new Promise<CoverTheme>((resolve) => {
     const image = new Image();
     image.decoding = "async";
+    image.crossOrigin = "anonymous";
     image.onload = () => {
       try {
         const canvas = document.createElement("canvas");

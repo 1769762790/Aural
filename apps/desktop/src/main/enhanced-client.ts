@@ -4,12 +4,18 @@ export interface EnhancedSearchSong {
   id: number;
   name: string;
   ar?: Array<{ id?: number; name?: string }>;
+  artists?: Array<{ id?: number; name?: string }>;
   al?: {
+    name?: string;
+    picUrl?: string;
+  };
+  album?: {
     name?: string;
     picUrl?: string;
   };
   alia?: string[];
   dt?: number;
+  duration?: number;
 }
 
 export interface EnhancedSearchArtist {
@@ -100,6 +106,10 @@ interface EnhancedClientPayload {
   [key: string]: string | number | undefined;
 }
 
+interface EnhancedClientOptions {
+  resolveCookie?: () => string | null;
+}
+
 const require = createRequire(import.meta.url);
 const enhancedApi = require("@neteasecloudmusicapienhanced/api") as {
   search: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
@@ -113,8 +123,13 @@ const enhancedApi = require("@neteasecloudmusicapienhanced/api") as {
   user_account: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
   user_playlist: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
   playlist_track_all: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
+  personal_fm: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
+  fm_trash: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
+  recommend_songs: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
   artist_list: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
+  top_artists: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
   artist_top_song: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
+  album_newest: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
   recommend_resource: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
   top_playlist: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
   top_playlist_highquality: (params: EnhancedClientPayload) => Promise<{ status: number; body: Record<string, unknown> }>;
@@ -231,6 +246,26 @@ const readPlaylistDetail = (payload: Record<string, unknown>) => {
 
 const readUserPlaylists = (payload: Record<string, unknown>) =>
   Array.isArray(payload.playlist) ? (payload.playlist as EnhancedUserPlaylist[]) : [];
+
+const readPersonalFmSongs = (payload: Record<string, unknown>) =>
+  Array.isArray(payload.data) ? (payload.data as EnhancedSearchSong[]) : [];
+
+const readDailyRecommendedSongs = (payload: Record<string, unknown>) => {
+  const data = asRecord(payload.data);
+  if (Array.isArray(data?.dailySongs)) {
+    return data.dailySongs as EnhancedSearchSong[];
+  }
+
+  if (Array.isArray(payload.dailySongs)) {
+    return payload.dailySongs as EnhancedSearchSong[];
+  }
+
+  if (Array.isArray(data?.songs)) {
+    return data.songs as EnhancedSearchSong[];
+  }
+
+  return [];
+};
 
 const normalizeChartPreview = (value: unknown): EnhancedChartPreviewEntry | null => {
   const record = asRecord(value);
@@ -432,6 +467,13 @@ const readAlbumNew = (payload: Record<string, unknown>) => {
   return [] as EnhancedOnlineAlbumSummary[];
 };
 
+const readAlbumNewest = (payload: Record<string, unknown>) => {
+  const albums = Array.isArray(payload.albums) ? payload.albums : [];
+  return albums
+    .map((entry) => normalizeAlbumSummary(entry))
+    .filter((entry): entry is EnhancedOnlineAlbumSummary => Boolean(entry));
+};
+
 const readAlbumDetail = (payload: Record<string, unknown>): EnhancedOnlineAlbumDetail | null => {
   const rootCandidates = [payload.album, payload.data, payload];
   const source = rootCandidates
@@ -486,23 +528,32 @@ const toPayload = (params: EnhancedClientPayload) => {
   return payload;
 };
 
-const requestEnhancedJson = async (
-  pathname: string,
-  params: EnhancedClientPayload,
-  fn: (payload: Record<string, string | number>) => Promise<{ status: number; body: Record<string, unknown> }>
-) => {
-  const payload = toPayload(params);
-  logEnhancedRequest(pathname, payload);
-  const response = await fn(payload);
-  logEnhancedResponse(pathname, response.status);
-  if (response.status < 200 || response.status >= 300) {
-    throw new Error(`Enhanced SDK request failed: ${response.status}`);
-  }
+export const createEnhancedClient = (_baseUrlOrOptions?: string | EnhancedClientOptions) => {
+  const options =
+    _baseUrlOrOptions && typeof _baseUrlOrOptions === "object" ? _baseUrlOrOptions : ({} as EnhancedClientOptions);
 
-  return response.body;
-};
+  const requestEnhancedJson = async (
+    pathname: string,
+    params: EnhancedClientPayload,
+    fn: (payload: Record<string, string | number>) => Promise<{ status: number; body: Record<string, unknown> }>
+  ) => {
+    const explicitCookie = typeof params.cookie === "string" && params.cookie.trim().length ? params.cookie.trim() : null;
+    const resolvedCookie = explicitCookie ?? options.resolveCookie?.() ?? null;
+    const payload = toPayload({
+      ...params,
+      cookie: resolvedCookie ?? undefined
+    });
+    logEnhancedRequest(pathname, payload);
+    const response = await fn(payload);
+    logEnhancedResponse(pathname, response.status);
+    if (response.status < 200 || response.status >= 300) {
+      throw new Error(`Enhanced SDK request failed: ${response.status}`);
+    }
 
-export const createEnhancedClient = (_baseUrl?: string) => ({
+    return response.body;
+  };
+
+  return {
   searchSongs: async (term: string, page = 1, limit = 20) => {
     const payload = await requestEnhancedJson(
       "/search",
@@ -562,7 +613,7 @@ export const createEnhancedClient = (_baseUrl?: string) => ({
       },
       enhancedApi.lyric
     ),
-  getCurrentUserId: async (cookie: string) => {
+  getCurrentUserId: async (cookie?: string) => {
     const payload = await requestEnhancedJson(
       "/user/account",
       {
@@ -572,7 +623,7 @@ export const createEnhancedClient = (_baseUrl?: string) => ({
     );
     return readUserId(payload);
   },
-  getCurrentUser: async (cookie: string) => {
+  getCurrentUser: async (cookie?: string) => {
     const payload = await requestEnhancedJson(
       "/user/account",
       {
@@ -618,7 +669,7 @@ export const createEnhancedClient = (_baseUrl?: string) => ({
       },
       enhancedApi.login_qr_check
     ),
-  getLikedSongIds: async (uid: string, cookie: string) => {
+  getLikedSongIds: async (uid: string, cookie?: string) => {
     const payload = await requestEnhancedJson(
       "/likelist",
       {
@@ -629,7 +680,26 @@ export const createEnhancedClient = (_baseUrl?: string) => ({
     );
     return readLikeList(payload);
   },
-  getUserPlaylists: async (uid: string, cookie: string) => {
+  getDailyRecommendedSongs: async () => {
+    const payload = await requestEnhancedJson("/recommend/songs", {}, enhancedApi.recommend_songs);
+    return readDailyRecommendedSongs(payload);
+  },
+  getPersonalFmSongs: async () => {
+    const payload = await requestEnhancedJson("/personal_fm", {}, enhancedApi.personal_fm);
+    return readPersonalFmSongs(payload);
+  },
+  trashPersonalFmSong: async (songId: string) => {
+    await requestEnhancedJson(
+      "/fm_trash",
+      {
+        id: songId,
+        time: 25
+      },
+      enhancedApi.fm_trash
+    );
+    return true;
+  },
+  getUserPlaylists: async (uid: string, cookie?: string) => {
     const payload = await requestEnhancedJson(
       "/user/playlist",
       {
@@ -642,7 +712,7 @@ export const createEnhancedClient = (_baseUrl?: string) => ({
     );
     return readUserPlaylists(payload);
   },
-  getPlaylistTrackAll: async (playlistId: string, cookie: string) => {
+  getPlaylistTrackAll: async (playlistId: string, cookie?: string) => {
     const payload = await requestEnhancedJson(
       "/playlist/track/all",
       {
@@ -669,6 +739,17 @@ export const createEnhancedClient = (_baseUrl?: string) => ({
     );
     return readTopLevelArtists(payload);
   },
+  getTopArtists: async (limit = 50, offset = 0) => {
+    const payload = await requestEnhancedJson(
+      "/top/artists",
+      {
+        limit,
+        offset
+      },
+      enhancedApi.top_artists
+    );
+    return readTopLevelArtists(payload);
+  },
   getArtistTopSongs: async (artistId: string) => {
     const payload = await requestEnhancedJson(
       "/artist/top/song",
@@ -678,6 +759,10 @@ export const createEnhancedClient = (_baseUrl?: string) => ({
       enhancedApi.artist_top_song
     );
     return readTopLevelSongs(payload);
+  },
+  getNewestAlbums: async (limit = 10) => {
+    const payload = await requestEnhancedJson("/album/newest", {}, enhancedApi.album_newest);
+    return readAlbumNewest(payload).slice(0, Math.max(1, Math.min(50, limit)));
   },
   getDailyRecommendedPlaylists: async () => {
     const payload = await requestEnhancedJson("/recommend/resource", {}, enhancedApi.recommend_resource);
@@ -766,4 +851,5 @@ export const createEnhancedClient = (_baseUrl?: string) => ({
       },
       enhancedApi.song_url_v1
     )
-});
+  };
+};

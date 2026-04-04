@@ -29,13 +29,9 @@ export const OnlinePlaylistCategoryCard = ({
       </div>
 
       <div className="space-y-1.5 px-1">
-        <h3 className="line-clamp-2 text-lg font-semibold leading-tight tracking-[-0.03em] text-foreground transition-colors duration-200 group-hover:text-primary">
+        <h3 className="line-clamp-1 text-lg font-semibold leading-tight tracking-[-0.03em] text-foreground transition-colors duration-200 group-hover:text-primary">
           {playlist.title}
         </h3>
-        <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
-          <span className="rounded-full bg-muted px-2 py-1 text-[10px] tracking-[0.16em] text-foreground/72">Playlist</span>
-          <span>{formatCount(playlist.trackCount, "tracks")}</span>
-        </div>
       </div>
     </button>
   );

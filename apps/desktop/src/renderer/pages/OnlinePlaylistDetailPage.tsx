@@ -42,7 +42,6 @@ export const OnlinePlaylistDetailPage = () => {
               This online playlist is currently unavailable. Try refreshing the recommendation card and open it again.
             </p>
           </div>
-          <Button onClick={() => void navigate("/online/playlists")}>Back to Online Playlists</Button>
         </CardContent>
       </Card>
     );

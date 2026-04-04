@@ -26,6 +26,8 @@ import { OnlineArtistDetailPage } from "./pages/OnlineArtistDetailPage";
 import { OnlineAlbumsPage } from "./pages/OnlineAlbumsPage";
 import { OnlineAlbumDetailPage } from "./pages/OnlineAlbumDetailPage";
 import { OnlineChartsPage } from "./pages/OnlineChartsPage";
+import { OnlineHomePage } from "./pages/OnlineHomePage";
+import { OnlineDailySongsPage } from "./pages/OnlineDailySongsPage";
 import "./styles/app.css";
 
 const router = createHashRouter([
@@ -87,7 +89,11 @@ const router = createHashRouter([
       },
       {
         path: "online",
-        element: <Navigate to="/online/favorites" replace />
+        element: <OnlineHomePage />
+      },
+      {
+        path: "online/daily-songs",
+        element: <OnlineDailySongsPage />
       },
       {
         path: "online/favorites",
