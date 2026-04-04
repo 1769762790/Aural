@@ -86,5 +86,27 @@ describe("search service", () => {
     expect(playlists[0]?.name).toBe("通勤");
     expect(all.tracks[0]?.title).toBe("Hello");
   });
-});
 
+  it("does not return initials-only local artist matches for unrelated english words", async () => {
+    const service = new DefaultSearchService(
+      createArraySearchSource({
+        artists: [
+          {
+            id: "art_1",
+            name: "草东没有派对",
+            normalizedName: "cao dong mei you pai dui",
+            trackCount: 5,
+            albumCount: 2,
+            searchText: "cao dong mei you pai dui",
+            pinyin: "cao dong mei you pai dui",
+            pinyinInitials: "cdmypd"
+          }
+        ]
+      })
+    );
+
+    const artists = await service.searchArtists({ term: "capper" });
+
+    expect(artists).toHaveLength(0);
+  });
+});

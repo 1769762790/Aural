@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "license": "MIT",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -10,6 +11,9 @@
   "scripts": {
     "dev": "npm --workspace @aural/desktop run dev",
     "build": "npm --workspace @aural/desktop run build",
+    "build:win": "npm --workspace @aural/desktop run build:win",
+    "build:mac": "npm --workspace @aural/desktop run build:mac",
+    "build:linux": "npm --workspace @aural/desktop run build:linux",
     "typecheck": "npm --workspaces --if-present --include-workspace-root=false run typecheck",
     "test": "vitest run",
     "test:watch": "vitest"

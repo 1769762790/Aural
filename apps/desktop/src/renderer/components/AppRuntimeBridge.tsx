@@ -3,6 +3,7 @@ import type { ThemeMode } from "@aural/domain";
 import { defaultSettings } from "@renderer/components/settings-catalog";
 import { resolveAccentPalette } from "@renderer/lib/accentPalette";
 import { bridge } from "@renderer/lib/bridge";
+import { flushAllPendingSettings } from "@renderer/lib/settingsPersistence";
 import { useLibraryStore } from "@renderer/stores/libraryStore";
 import { usePlayerStore } from "@renderer/stores/playerStore";
 import { usePreferencesStore } from "@renderer/stores/preferencesStore";
@@ -86,6 +87,35 @@ export const AppRuntimeBridge = () => {
   }, [hydrated, markLibraryChanged, snapshot]);
 
   useEffect(() => {
+    const root = document.documentElement;
+    applyRuntimeAppearance(root, snapshot);
+
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = () => applyRuntimeAppearance(root, usePreferencesStore.getState().snapshot);
+
+    mediaQuery.addEventListener("change", handleChange);
+    return () => {
+      mediaQuery.removeEventListener("change", handleChange);
+    };
+  }, [snapshot]);
+
+  useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+
+    const previousSnapshot = previousSnapshotRef.current;
+    const changedPreferences = previousSnapshot
+      ? Object.fromEntries(
+          Object.entries(snapshot).filter(([key, value]) => previousSnapshot[key as keyof typeof previousSnapshot] !== value)
+        )
+      : snapshot;
+
+    usePlayerStore.getState().applyPreferences(changedPreferences);
+    previousSnapshotRef.current = snapshot;
+  }, [hydrated, snapshot]);
+
+  useEffect(() => {
     if (!hydrated || startupPlaybackRestoreTriggered) {
       return;
     }
@@ -102,27 +132,23 @@ export const AppRuntimeBridge = () => {
   }, [hydrated, snapshot]);
 
   useEffect(() => {
-    const root = document.documentElement;
-    applyRuntimeAppearance(root, snapshot);
-
-    const previousSnapshot = previousSnapshotRef.current;
-    const changedPreferences = previousSnapshot
-      ? Object.fromEntries(
-          Object.entries(snapshot).filter(([key, value]) => previousSnapshot[key as keyof typeof previousSnapshot] !== value)
-        )
-      : snapshot;
-
-    usePlayerStore.getState().applyPreferences(changedPreferences);
-    previousSnapshotRef.current = snapshot;
-
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleChange = () => applyRuntimeAppearance(root, usePreferencesStore.getState().snapshot);
-
-    mediaQuery.addEventListener("change", handleChange);
-    return () => {
-      mediaQuery.removeEventListener("change", handleChange);
+    const persistPlaybackSession = () => {
+      usePlayerStore.getState().persistSession("flush");
+      void flushAllPendingSettings();
     };
-  }, [snapshot]);
+
+    window.addEventListener("beforeunload", persistPlaybackSession);
+    return () => {
+      window.removeEventListener("beforeunload", persistPlaybackSession);
+    };
+  }, []);
+
+  useEffect(() => {
+    return bridge.system.onBeforeQuitFlush(async () => {
+      await usePlayerStore.getState().persistSession("flush");
+      await flushAllPendingSettings();
+    });
+  }, []);
 
   return null;
 };

@@ -37,7 +37,7 @@
 :root {
   --radius: 1.125rem;
   --titlebar-area-height: env(titlebar-area-height, 0px);
-  --background: #f5f2ec;
+  --background: #fff;
   --foreground: #14151b;
   --card: rgba(255, 255, 255, 0.86);
   --card-foreground: #14151b;
@@ -206,4 +206,132 @@
 
 .react-calendar-heatmap.aural-heatmap rect:hover {
   transform: translateY(-1px);
+}
+
+.player-scene-artwork-shell {
+  --player-artwork-glow: var(--primary);
+  box-shadow:
+    0 26px 60px rgba(0, 0, 0, 0.38),
+    0 0 0 rgba(0, 0, 0, 0);
+  transition:
+    box-shadow 360ms ease,
+    filter 360ms ease;
+}
+
+.player-scene-artwork-shell.is-dark-glow {
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+    /* 0 28px 68px rgba(0, 0, 0, 0.48),
+    0 0 26px color-mix(in srgb, var(--player-artwork-glow) 26%, transparent),
+    0 0 52px color-mix(in srgb, var(--player-artwork-glow) 14%, transparent); */
+}
+
+.player-scene-artwork-shell.is-breathing {
+  animation: player-artwork-breathe 4.8s ease-in-out infinite;
+  will-change: box-shadow, filter;
+}
+
+:root.dark .player-scene-artwork-shell.is-breathing {
+  animation-name: player-artwork-breathe-dark;
+}
+
+/* 隐藏滚动条 */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes player-artwork-breathe {
+  0%,
+  100% {
+    box-shadow:
+      0 26px 60px rgba(0, 0, 0, 0.38),
+      0 0 16px color-mix(in srgb, var(--player-artwork-glow) 8%, transparent),
+      0 0 30px color-mix(in srgb, var(--player-artwork-glow) 5%, transparent);
+    filter: saturate(1);
+  }
+
+  50% {
+    box-shadow:
+      0 32px 76px rgba(0, 0, 0, 0.42),
+      0 0 24px color-mix(in srgb, var(--player-artwork-glow) 16%, transparent),
+      0 0 44px color-mix(in srgb, var(--player-artwork-glow) 9%, transparent);
+    filter: saturate(1.02);
+  }
+}
+
+@keyframes player-artwork-breathe-dark {
+  0%,
+  100% {
+    box-shadow: 0 0 35px rgba(255, 255, 255, 0.4);
+      /* 0 28px 68px rgba(0, 0, 0, 0.48),
+      0 0 26px color-mix(in srgb, var(--player-artwork-glow) 26%, transparent),
+      0 0 52px color-mix(in srgb, var(--player-artwork-glow) 14%, transparent); */
+    /* filter: saturate(1.02); */
+  }
+
+  50% {
+    box-shadow: 0 0 35px rgba(255, 255, 255, 0);
+    /* box-shadow:
+      0 34px 84px rgba(0, 0, 0, 0.56),
+      0 0 34px color-mix(in srgb, var(--player-artwork-glow) 34%, transparent),
+      0 0 72px color-mix(in srgb, var(--player-artwork-glow) 20%, transparent); */
+    /* filter: saturate(1.06); */
+  }
+}
+
+.player-scene-artwork-shell {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+}
+
+.player-scene-artwork-surface {
+  position: relative;
+  z-index: 1;
+}
+
+.player-scene-artwork-pulse {
+  position: absolute;
+  inset: -10%;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 28px;
+  opacity: var(--artwork-pulse-opacity, 0);
+  transform: scale(var(--artwork-pulse-scale, 1));
+  filter: blur(var(--artwork-pulse-blur, 18px));
+  background:
+    radial-gradient(
+      circle at 50% 50%,
+      color-mix(in srgb, var(--player-artwork-glow) 28%, transparent) 0%,
+      color-mix(in srgb, var(--player-artwork-glow) 12%, transparent) 36%,
+      transparent 72%
+    );
+  transition:
+    opacity 160ms linear,
+    transform 160ms linear,
+    filter 160ms linear;
+  will-change: opacity, transform, filter;
+}
+
+
+/* 定义背景图缓慢横向滚动动画 */
+@keyframes bgScroll {
+  0% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 0% 100%; /* 横向滚动 */
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+
+/* 定义一个工具类 */
+.bg-animate {
+  animation: bgScroll 20s linear infinite;
 }

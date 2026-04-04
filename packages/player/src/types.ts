@@ -35,7 +35,7 @@ export interface QueueItem {
   id: string;
   queueId: QueueId;
   trackId: TrackId;
-  sourceType: "album" | "artist" | "folder" | "playlist" | "search" | "library" | "favorites" | "history";
+  sourceType: "album" | "artist" | "folder" | "playlist" | "search" | "library" | "favorites" | "history" | "online";
   sourceId: string;
   position: number;
 }

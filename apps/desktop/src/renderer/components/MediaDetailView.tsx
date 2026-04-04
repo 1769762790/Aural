@@ -1,34 +1,43 @@
-import type { ReactNode } from "react";
-import { ArrowLeft, Play, Shuffle } from "lucide-react";
-import type { Track } from "@aural/domain";
+import { useMemo, type ReactNode } from "react";
+import type { ColumnDef } from "@tanstack/react-table";
+import { Play, Shuffle } from "lucide-react";
+import type { PlayableItem } from "@aural/domain";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { formatDuration, formatRuntimeCompact } from "@renderer/lib/formatters";
+import {
+  PlayableItemContextMenu,
+  type PlayableItemContextMenuActions
+} from "@renderer/components/PlayableItemContextMenu";
+import { DataTable } from "@renderer/components/ui/data-table";
+import { formatDuration } from "@renderer/lib/formatters";
 import { buildPlaylistHeroArtwork } from "@renderer/lib/playlistArtwork";
+import { resolvePlayableCoverUrl } from "@renderer/lib/playable";
 import { usePlayerStore } from "@renderer/stores/playerStore";
+import TrackList from "./TrackList";
+import { bridge } from "@/lib/bridge";
 
 interface MediaDetailViewProps {
   backLabel?: string;
   onBack: () => void;
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
   description: string;
   stats: string[];
-  tracks: Track[];
+  tracks: PlayableItem[];
   heroSeed: string;
   heroCoverPath: string | null;
+  heroCoverUrl?: string | null;
   primaryActionLabel?: string;
   secondaryActionLabel?: string;
   onPlayAll: () => void;
   onShuffle: () => void;
-  onTrackPlay: (track: Track) => void;
+  onTrackPlay: (track: PlayableItem) => void;
   headerActions?: ReactNode;
-  renderTrackActions?: (track: Track) => ReactNode;
+  renderTrackActions?: (track: PlayableItem) => ReactNode;
+  trackContextMenuActions?: PlayableItemContextMenuActions;
 }
 
 export const MediaDetailView = ({
-  backLabel = "Back",
-  onBack,
   eyebrow,
   title,
   description,
@@ -36,40 +45,132 @@ export const MediaDetailView = ({
   tracks,
   heroSeed,
   heroCoverPath,
+  heroCoverUrl = null,
   primaryActionLabel = "Play",
   secondaryActionLabel = "Shuffle",
   onPlayAll,
   onShuffle,
   onTrackPlay,
   headerActions,
-  renderTrackActions
+  renderTrackActions,
+  trackContextMenuActions
 }: MediaDetailViewProps) => {
-  const currentTrack = usePlayerStore((state) => state.currentTrack);
+  console.log("Rendering MediaDetailView with tracks:", tracks);
+  const currentItem = usePlayerStore((state) => state.currentItem);
+
+  const columns = useMemo<ColumnDef<PlayableItem>[]>(
+    () => [
+      {
+        id: "index",
+        enableSorting: false,
+        meta: {
+          headerClassName: "w-[72px] min-w-[72px] px-4",
+          cellClassName: "w-[72px] min-w-[72px] px-4"
+        },
+        header: () => <span>#</span>,
+        cell: ({ row, table }) => {
+          const track = row.original;
+          const isActive = currentItem?.id === track.id;
+          const sortedIndex = table.getRowModel().rows.findIndex((entry) => entry.id === row.id);
+
+          return (
+            <span className={cn("text-sm font-semibold", isActive ? "text-primary" : "text-muted-foreground")}>
+              {isActive ? "||" : String(sortedIndex + 1).padStart(2, "0")}
+            </span>
+          );
+        }
+      },
+      {
+        accessorKey: "title",
+        enableSorting: false,
+        meta: {
+          headerClassName: "px-4",
+          cellClassName: "px-4"
+        },
+        header: () => <span>Title</span>,
+        cell: ({ row }) => {
+          const track = row.original;
+          const coverUrl = resolvePlayableCoverUrl(track);
+
+          return (
+            <div className="flex min-w-0 items-center gap-4">
+              <div
+                className="size-11 shrink-0 rounded-[14px] border border-border bg-cover bg-center"
+                style={coverUrl ? { backgroundImage: `url("${coverUrl}")` } : buildPlaylistHeroArtwork(track.id, track.coverPath)}
+              />
+              <div className="min-w-0">
+                <p className="truncate text-lg font-semibold text-foreground">{track.title}</p>
+                <p className="truncate text-xs uppercase tracking-[0.18em] text-primary/70">
+                  {track.source === "online" ? `${track.provider ?? "online"} / ${track.format}` : track.format.toUpperCase()}
+                </p>
+              </div>
+            </div>
+          );
+        }
+      },
+      {
+        accessorKey: "artist",
+        enableSorting: false,
+        meta: {
+          headerClassName: "px-4",
+          cellClassName: "px-4"
+        },
+        header: () => <span>Artist</span>,
+        cell: ({ row }) => <div className="truncate text-base text-muted-foreground">{row.original.artist}</div>
+      },
+      {
+        accessorKey: "album",
+        enableSorting: false,
+        meta: {
+          headerClassName: "px-4",
+          cellClassName: "px-4"
+        },
+        header: () => <span>Album</span>,
+        cell: ({ row }) => <div className="truncate text-base italic text-muted-foreground/80">{row.original.album}</div>
+      },
+      {
+        accessorKey: "duration",
+        enableSorting: false,
+        meta: {
+          headerClassName: "w-[88px] min-w-[88px] px-4 text-right",
+          cellClassName: "w-[88px] min-w-[88px] px-4"
+        },
+        header: () => <div className="text-right">Time</div>,
+        cell: ({ row }) => <div className="text-right text-sm text-muted-foreground">{formatDuration(row.original.duration)}</div>
+      },
+      {
+        id: "actions",
+        enableSorting: false,
+        meta: {
+          headerClassName: "w-[84px] min-w-[84px] px-4",
+          cellClassName: "w-[84px] min-w-[84px] px-4"
+        },
+        header: () => <span className="sr-only">Actions</span>,
+        cell: ({ row }) => <div className="flex items-center justify-end gap-3">{renderTrackActions?.(row.original) ?? null}</div>
+      }
+    ],
+    [currentItem?.id, renderTrackActions]
+  );
+
+  const downloadTrack = async (itemId: string) => {
+    await bridge.online.download(itemId);
+    // await refreshDownloads?.();
+  };
 
   return (
     <div className="space-y-10">
-      <div className="flex items-center">
-        <Button
-          type="button"
-          variant="ghost"
-          className="h-11 rounded-full border border-border bg-background/70 px-4 text-muted-foreground hover:bg-accent/45 hover:text-foreground"
-          onClick={onBack}
-        >
-          <ArrowLeft className="size-4" />
-          {backLabel}
-        </Button>
-      </div>
-
       <section className="grid gap-8 xl:grid-cols-[320px_minmax(0,1fr)] xl:items-center">
         <div
           className="aspect-square w-full max-w-[320px] rounded-[30px] border border-border bg-cover bg-center bg-no-repeat shadow-[0_30px_80px_rgba(0,0,0,0.2)]"
-          style={buildPlaylistHeroArtwork(heroSeed, heroCoverPath)}
+          style={heroCoverUrl ? { backgroundImage: `url("${heroCoverUrl}")` } : buildPlaylistHeroArtwork(heroSeed, heroCoverPath)}
         />
 
         <div className="space-y-6">
           <div className="space-y-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-primary">{eyebrow}</p>
-            <h1 className="max-w-[20ch] text-6xl font-black leading-[0.92] tracking-[-0.08em] text-foreground truncate w-full">{title}</h1>
+            {eyebrow ? <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-primary">{eyebrow}</p> : null}
+            <h1 className="w-full max-w-[20ch] truncate text-[45px] font-black leading-[0.92] tracking-[-0.08em] text-foreground">
+              {title}
+            </h1>
             <p className="max-w-2xl text-lg leading-8 text-muted-foreground">{description}</p>
           </div>
 
@@ -108,57 +209,9 @@ export const MediaDetailView = ({
       </section>
 
       <section className="space-y-4">
-        <div className="grid grid-cols-[56px_minmax(0,2.2fr)_minmax(0,1.4fr)_minmax(0,1.5fr)_88px_84px] items-center gap-4 border-b border-border px-4 pb-4 text-[11px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-          <span>#</span>
-          <span>Title</span>
-          <span>Artist</span>
-          <span>Album</span>
-          <span className="text-right">Time</span>
-          <span />
-        </div>
-
-        <div className="space-y-2">
-          {tracks.map((track, index) => {
-            const isActive = currentTrack?.id === track.id;
-
-            return (
-              <button
-                key={track.id}
-                type="button"
-                className={cn(
-                  "grid w-full grid-cols-[56px_minmax(0,2.2fr)_minmax(0,1.4fr)_minmax(0,1.5fr)_88px_84px] items-center gap-4 rounded-[24px] border px-4 py-4 text-left transition-all",
-                  isActive
-                    ? "border-primary/30 bg-accent/55 shadow-[0_0_0_1px_rgba(167,139,250,0.14),0_18px_40px_rgba(0,0,0,0.12)]"
-                    : "border-transparent hover:border-border hover:bg-accent/35"
-                )}
-                onDoubleClick={() => onTrackPlay(track)}
-              >
-                <div className="flex items-center gap-3">
-                  <span className={cn("text-sm font-semibold", isActive ? "text-primary" : "text-muted-foreground")}>
-                    {isActive ? "||" : String(index + 1).padStart(2, "0")}
-                  </span>
-                </div>
-
-                <div className="flex min-w-0 items-center gap-4">
-                  <div
-                    className="size-11 shrink-0 rounded-[14px] border border-border bg-cover bg-center"
-                    style={buildPlaylistHeroArtwork(track.id, track.coverPath)}
-                  />
-                  <div className="min-w-0">
-                    <p className="truncate text-lg font-semibold text-foreground">{track.title}</p>
-                    <p className="truncate text-xs uppercase tracking-[0.18em] text-primary/70">{track.format.toUpperCase()}</p>
-                  </div>
-                </div>
-
-                <div className="truncate text-base text-muted-foreground">{track.artist}</div>
-                <div className="truncate text-base italic text-muted-foreground/80">{track.album}</div>
-                <div className="text-right text-sm text-muted-foreground">{formatDuration(track.duration)}</div>
-                <div className="flex items-center justify-end gap-3">{renderTrackActions?.(track) ?? null}</div>
-              </button>
-            );
-          })}
-        </div>
+        <TrackList tracks={tracks} onRowDoubleClick={onTrackPlay} onPlay={onTrackPlay} onDownload={downloadTrack} />
       </section>
     </div>
   );
 };
+

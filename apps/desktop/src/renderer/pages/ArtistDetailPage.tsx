@@ -7,6 +7,7 @@ import { MediaDetailView } from "@renderer/components/MediaDetailView";
 import { useAsyncResource } from "@renderer/hooks/useAsyncResource";
 import { bridge } from "@renderer/lib/bridge";
 import { formatRuntimeCompact } from "@renderer/lib/formatters";
+import { tracksToPlayableItems } from "@renderer/lib/playable";
 import { getTrackTime } from "@renderer/lib/playlistArtwork";
 import { usePlayerStore } from "@renderer/stores/playerStore";
 
@@ -75,7 +76,7 @@ export const ArtistDetailPage = () => {
         `${detail.data?.trackCount ?? 0} Tracks`,
         formatRuntimeCompact(detail.data?.totalDurationSeconds ?? 0)
       ]}
-      tracks={tracks}
+      tracks={tracksToPlayableItems(tracks)}
       heroSeed={artistId}
       heroCoverPath={detail.data?.coverPath ?? null}
       onPlayAll={() => {

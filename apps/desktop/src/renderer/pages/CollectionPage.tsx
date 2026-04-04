@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import type { PlaylistDetail } from "@aural/contracts";
-import type { Track } from "@aural/domain";
+import type { PlayableItem } from "@aural/domain";
 import { Plus } from "lucide-react";
 import { CollectionHeroCard } from "@/components/CollectionHeroCard";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,7 @@ import { usePlayerStore } from "@renderer/stores/playerStore";
 
 export const CollectionPage = () => {
   const navigate = useNavigate();
-  const playTracks = usePlayerStore((state) => state.playTracks);
+  const playItems = usePlayerStore((state) => state.playItems);
   const [createName, setCreateName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -57,8 +57,8 @@ export const CollectionPage = () => {
         key: string;
         album: string;
         artist: string;
-        latestTrack: Track;
-        tracks: Track[];
+        latestTrack: PlayableItem;
+        tracks: PlayableItem[];
       }
     >();
 
@@ -91,7 +91,7 @@ export const CollectionPage = () => {
     () =>
       (playlists.data ?? []).map((playlist) => {
         const detail = playlistDetails.data?.[playlist.id] ?? null;
-        const latestTrack = detail?.tracks.at(-1) ?? null;
+        const latestTrack = detail?.items.at(-1) ?? null;
 
         return {
           playlist,
@@ -163,7 +163,7 @@ export const CollectionPage = () => {
                 title={albumGroup.album}
                 subtitle={`${albumGroup.artist} • ${formatCount(albumGroup.tracks.length, "favorite tracks")}`}
                 onPlay={() =>
-                  void playTracks(
+                  void playItems(
                     [...albumGroup.tracks].sort((left, right) => getTrackTime(right) - getTrackTime(left)),
                     albumGroup.latestTrack.id,
                     "favorites",
@@ -199,7 +199,7 @@ export const CollectionPage = () => {
                   <div
                     className={cn(
                       "aspect-square rounded-[26px] border border-border bg-cover bg-center shadow-[0_18px_42px_rgba(0,0,0,0.12)] transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_28px_60px_rgba(0,0,0,0.18)] dark:shadow-[0_18px_42px_rgba(0,0,0,0.2)] dark:group-hover:shadow-[0_28px_60px_rgba(0,0,0,0.28)]",
-                      !detail?.tracks.length && "cursor-default"
+                      !detail?.items.length && "cursor-default"
                     )}
                     style={buildPlaylistCardArtwork(playlist.id, latestTrack?.coverPath ?? null)}
                   />

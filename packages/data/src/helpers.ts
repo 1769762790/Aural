@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { normalize } from "node:path";
-import { normalizeSearchTerm } from "@aural/domain/src/search";
+import { normalizeSearchTerm } from "@aural/domain";
 
 export const nowIso = () => new Date().toISOString();
 

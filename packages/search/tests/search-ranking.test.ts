@@ -12,5 +12,10 @@ describe("search ranking", () => {
     expect(initials?.reason).toBe("initials");
     expect(fuzzy?.reason).toBe("fuzzy");
   });
-});
 
+  it("does not match unrelated english words against one-letter pinyin initials", () => {
+    const mismatch = scoreCandidate({ texts: ["草东没有派对"], pinyin: "cao dong mei you pai dui", pinyinInitials: "cdmypd" }, "capper");
+
+    expect(mismatch).toBeNull();
+  });
+});

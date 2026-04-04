@@ -1,6 +1,7 @@
 import { Volume2, VolumeOff } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import { flushPlayerVolumePreference } from "@renderer/stores/player/audio-graph";
 import { usePlayerStore } from "@renderer/stores/playerStore";
 
 interface VolumeControlProps {
@@ -45,6 +46,9 @@ export const VolumeControl = ({
           if (typeof next === "number" && Number.isFinite(next)) {
             setVolumeLevel(next / 100);
           }
+        }}
+        onValueCommit={() => {
+          void flushPlayerVolumePreference();
         }}
         aria-label="Adjust volume"
         className={cn("w-24", trackClassName)}

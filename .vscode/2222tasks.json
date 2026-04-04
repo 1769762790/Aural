@@ -1,0 +1,53 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build Desktop App",
+      "type": "shell",
+      "command": "npm.cmd",
+      "args": ["run", "build"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Dev Desktop App",
+      "type": "shell",
+      "command": "npm.cmd",
+      "args": ["run", "dev"],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "VSCODE_DEBUG": "1"
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "custom",
+        "pattern": {
+          "regexp": "^(.*)$",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*vite v.*",
+          "endsPattern": ".*ready in .*"
+        }
+      }
+    },
+    {
+      "label": "Stop Desktop Dev App",
+      "type": "shell",
+      "command": "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "$workspace = [Regex]::Escape((Resolve-Path '${workspaceFolder}').Path); Get-CimInstance Win32_Process | Where-Object { ($_.Name -in @('node.exe','electron.exe')) -and $_.CommandLine -match $workspace } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}

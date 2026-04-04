@@ -79,6 +79,7 @@ export const scoreCandidate = (candidate: SearchCandidateForms, term: string): S
   const pinyinText = candidate.pinyin ? normalizeSearchTerm(candidate.pinyin) : null;
   const pinyinCompact = candidate.pinyin ? compactSearchTerm(candidate.pinyin) : null;
   const initials = candidate.pinyinInitials ? normalizeSearchTerm(candidate.pinyinInitials).replace(/\s+/g, "") : null;
+  const normalizedInitialsQuery = query.compact;
 
   const reasons: MatchReason[] = [];
 
@@ -103,7 +104,11 @@ export const scoreCandidate = (candidate: SearchCandidateForms, term: string): S
     reasons.push("prefix");
   }
 
-  if (initials && (initials === query.initials || initials.startsWith(query.initials))) {
+  if (
+    initials &&
+    normalizedInitialsQuery.length >= 2 &&
+    (initials === normalizedInitialsQuery || initials.startsWith(normalizedInitialsQuery))
+  ) {
     reasons.push("initials");
   }
 

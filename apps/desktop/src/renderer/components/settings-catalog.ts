@@ -28,9 +28,13 @@ export interface SettingsSectionDefinition {
 
 export const defaultSettings: Record<SettingKey, SettingValue> = {
   "appearance.mode": "system",
+  "appearance.layout": "vertical",
   "appearance.accent": "aurora",
+  "appearance.customAccents": null,
   "appearance.motion": true,
   "appearance.coverColor": true,
+  "appearance.dynamicCoverGradient": true,
+  "appearance.playerArtworkBreathing": true,
   "player.volume": 0.8,
   "player.startupAutoplay": false,
   "player.replayGainEnabled": true,
@@ -43,6 +47,7 @@ export const defaultSettings: Record<SettingKey, SettingValue> = {
   "player.fadeEnabled": true,
   "player.fadeMode": "crossfade",
   "player.crossfadeSeconds": 1.5,
+  "player.session": null,
   "player.resume": true,
   "player.otherAppAudioPolicy": "duck",
   "player.headphoneInsertAction": "play",
@@ -58,7 +63,17 @@ export const defaultSettings: Record<SettingKey, SettingValue> = {
   "library.confirmLocalSourceDeletion": true,
   "history.maxItems": 300,
   "history.clearOnExit": false,
-  "library.density": "default"
+  "library.density": "default",
+  "settings.centerDraft": null,
+  "online.enabled": true,
+  "online.providerBaseUrl": null,
+  "online.preferDownloadedCopy": true,
+  "online.downloadDirectory": null,
+  "online.cacheDirectory": null,
+  "online.cacheMaxSizeGb": 1,
+  "online.musicNamingFormat": "artist-title",
+  "online.neteaseCookie": null,
+  "online.lastMode": "local"
 };
 
 export const settingsSections: SettingsSectionDefinition[] = [
@@ -75,6 +90,16 @@ export const settingsSections: SettingsSectionDefinition[] = [
           { label: "System", value: "system" },
           { label: "Light", value: "light" },
           { label: "Dark", value: "dark" }
+        ]
+      },
+      {
+        key: "appearance.layout",
+        label: "Layout mode",
+        description: "Choose between the classic vertical shell and a horizontal top-navigation shell.",
+        kind: "segmented",
+        options: [
+          { label: "Vertical", value: "vertical" },
+          { label: "Horizontal", value: "horizontal" }
         ]
       },
       {
@@ -99,6 +124,18 @@ export const settingsSections: SettingsSectionDefinition[] = [
         key: "appearance.coverColor",
         label: "Cover ambience",
         description: "Allow the player surface to keep richer color and saturation around cover-driven artwork.",
+        kind: "toggle"
+      },
+      {
+        key: "appearance.dynamicCoverGradient",
+        label: "Dynamic cover gradient",
+        description: "Let the main player scene follow cover art with a softer dual-tone gradient background.",
+        kind: "toggle"
+      },
+      {
+        key: "appearance.playerArtworkBreathing",
+        label: "Artwork breathing",
+        description: "Let the main player cover shadow breathe gently while playback is active.",
         kind: "toggle"
       }
     ]

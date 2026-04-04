@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Trash2 } from "lucide-react";
-import type { Track } from "@aural/domain";
+import type { PlayableItem } from "@aural/domain";
 import { MediaDetailView } from "@renderer/components/MediaDetailView";
 import { FavoriteToggleButton } from "@renderer/components/FavoriteToggleButton";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,7 @@ const buildPlaylistDescription = (artists: string[], genres: string[]) => {
 export const PlaylistDetailPage = () => {
   const navigate = useNavigate();
   const { playlistId } = useParams();
-  const playTracks = usePlayerStore((state) => state.playTracks);
+  const playItems = usePlayerStore((state) => state.playItems);
   const [confirmingTrackId, setConfirmingTrackId] = useState<string | null>(null);
   const [removingTrackId, setRemovingTrackId] = useState<string | null>(null);
   const [isDeletingPlaylist, setIsDeletingPlaylist] = useState(false);
@@ -40,16 +40,16 @@ export const PlaylistDetailPage = () => {
     playlistId ? `playlist:detail:${playlistId}` : "playlist:detail:none"
   );
 
-  const tracks = playlist.data?.tracks ?? [];
-  const latestTrack = tracks.at(-1) ?? null;
-  const totalDuration = useMemo(() => tracks.reduce((sum, track) => sum + track.duration, 0), [tracks]);
+  const items = playlist.data?.items ?? [];
+  const latestTrack = items.at(-1) ?? null;
+  const totalDuration = useMemo(() => items.reduce((sum: number, track) => sum + track.duration, 0), [items]);
   const topArtists = useMemo(
-    () => Array.from(new Set(tracks.map((track) => track.artist).filter(Boolean))).slice(0, 3),
-    [tracks]
+    () => Array.from(new Set(items.map((track) => track.artist).filter(Boolean))).slice(0, 3),
+    [items]
   );
   const topGenres = useMemo(
-    () => Array.from(new Set(tracks.map((track) => track.genre).filter((genre): genre is string => Boolean(genre)))).slice(0, 3),
-    [tracks]
+    () => Array.from(new Set(items.map((track) => track.genre).filter((genre): genre is string => Boolean(genre)))).slice(0, 3),
+    [items]
   );
 
   if (!playlistId) {
@@ -72,12 +72,12 @@ export const PlaylistDetailPage = () => {
     );
   }
 
-  const handleRemoveTrack = async (trackId: Track["id"]) => {
+  const handleRemoveTrack = async (trackId: PlayableItem["id"]) => {
     setRemovingTrackId(trackId);
     try {
       await bridge.collection.removeFromPlaylist({
         playlistId,
-        trackIds: [trackId]
+        itemIds: [trackId]
       });
       setConfirmingTrackId(null);
       await playlist.refresh();
@@ -104,26 +104,26 @@ export const PlaylistDetailPage = () => {
       eyebrow="Curated Playlist"
       title={playlist.data?.name ?? "Playlist"}
       description={buildPlaylistDescription(topArtists, topGenres)}
-      stats={["The Curator", `${tracks.length} Tracks`, formatRuntimeCompact(totalDuration)]}
-      tracks={tracks}
+      stats={["The Curator", `${items.length} Tracks`, formatRuntimeCompact(totalDuration)]}
+      tracks={items}
       heroSeed={playlistId}
       heroCoverPath={latestTrack?.coverPath ?? null}
       onPlayAll={() => {
-        if (!tracks.length) {
+        if (!items.length) {
           return;
         }
-        void playTracks(tracks, tracks[0]?.id, "playlist", playlistId);
+        void playItems(items, items[0]?.id, "playlist", playlistId);
       }}
       onShuffle={() => {
-        if (!tracks.length) {
+        if (!items.length) {
           return;
         }
-        const shuffled = [...tracks]
+        const shuffled = [...items]
           .sort((left, right) => getTrackTime(right) - getTrackTime(left))
           .sort(() => Math.random() - 0.5);
-        void playTracks(shuffled, shuffled[0]?.id, "playlist", `${playlistId}:shuffle`);
+        void playItems(shuffled, shuffled[0]?.id, "playlist", `${playlistId}:shuffle`);
       }}
-      onTrackPlay={(track) => void playTracks(tracks, track.id, "playlist", playlistId)}
+      onTrackPlay={(track) => void playItems(items, track.id, "playlist", playlistId)}
       headerActions={
         <Popover open={confirmDeletePlaylist} onOpenChange={setConfirmDeletePlaylist}>
           <PopoverTrigger asChild>
@@ -215,10 +215,10 @@ export const PlaylistDetailPage = () => {
                     type="button"
                     className="rounded-full bg-destructive px-4 text-destructive-foreground hover:bg-destructive/90"
                     disabled={removingTrackId === track.id}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      void handleRemoveTrack(track.id);
-                    }}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    void handleRemoveTrack(track.id);
+                  }}
                   >
                     Delete
                   </Button>

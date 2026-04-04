@@ -1,28 +1,39 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { CircleUserRound, Clock3, Disc3, Heart, Home, ListMusic, Settings2, type LucideIcon } from "lucide-react";
+import type { BrowseMode } from "@aural/domain";
+import { BarChart3, CircleUserRound, Clock3, Disc3, Heart, Home, ListMusic, type LucideIcon } from "lucide-react";
 import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList } from "@/components/ui/navigation-menu";
 import { cn } from "@/lib/utils";
 
-interface SidebarNavItem {
+export interface SidebarNavItem {
   to: string;
   label: string;
   note: string;
   icon: LucideIcon;
 }
 
-const navItems: SidebarNavItem[] = [
+export const localNavItems: SidebarNavItem[] = [
   { to: "/", label: "Home", note: "", icon: Home },
   { to: "/songs", label: "Songs", note: "", icon: ListMusic },
   { to: "/artists", label: "Artists", note: "", icon: CircleUserRound },
   { to: "/albums", label: "Albums", note: "", icon: Disc3 },
   { to: "/collection", label: "Playlists", note: "", icon: ListMusic },
   { to: "/favorites", label: "Favorites", note: "", icon: Heart },
-  { to: "/recent", label: "Recent", note: "", icon: Clock3 },
-  { to: "/settings", label: "Settings", note: "", icon: Settings2 }
+  { to: "/recent", label: "Recent", note: "", icon: Clock3 }
 ];
 
-export const SidebarNavigation = () => {
+export const onlineNavItems: SidebarNavItem[] = [
+  { to: "/online", label: "Home", note: "", icon: Home },
+  { to: "/online/artists", label: "Artists", note: "", icon: CircleUserRound },
+  { to: "/online/albums", label: "Albums", note: "", icon: Disc3 },
+  { to: "/online/charts", label: "Charts", note: "", icon: BarChart3 },
+  { to: "/online/favorites", label: "Favorites", note: "", icon: Heart },
+  { to: "/online/playlists", label: "Playlists", note: "", icon: ListMusic }
+];
+
+export const getNavigationItemsForMode = (mode: BrowseMode) => (mode === "online" ? onlineNavItems : localNavItems);
+
+export const SidebarNavigation = ({ mode }: { mode: BrowseMode }) => {
   const location = useLocation();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef<Record<string, HTMLLIElement | null>>({});
@@ -32,7 +43,9 @@ export const SidebarNavigation = () => {
     opacity: 0
   });
 
-  const isActiveItem = (to: string) => {
+  const navItems = getNavigationItemsForMode(mode);
+
+  const matchesItemPath = (to: string) => {
     if (to === "/") {
       return location.pathname === "/";
     }
@@ -40,9 +53,12 @@ export const SidebarNavigation = () => {
     return location.pathname === to || location.pathname.startsWith(`${to}/`);
   };
 
+  const activeItem = navItems
+    .filter((item) => matchesItemPath(item.to))
+    .sort((left, right) => right.to.length - left.to.length)[0] ?? null;
+
   useLayoutEffect(() => {
     const updateIndicator = () => {
-      const activeItem = navItems.find((item) => isActiveItem(item.to));
       const activeNode = activeItem ? itemRefs.current[activeItem.to] : null;
       const containerNode = containerRef.current;
 
@@ -78,7 +94,7 @@ export const SidebarNavigation = () => {
       resizeObserver.disconnect();
       window.removeEventListener("resize", updateIndicator);
     };
-  }, [location.pathname]);
+  }, [activeItem, location.pathname, mode]);
 
   return (
     <div ref={containerRef} className="relative w-full">
@@ -98,7 +114,7 @@ export const SidebarNavigation = () => {
         <NavigationMenuList className="grid w-full grid-cols-1 items-stretch justify-stretch gap-2 space-x-0">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const active = isActiveItem(item.to);
+          const active = activeItem?.to === item.to;
 
           return (
             <NavigationMenuItem

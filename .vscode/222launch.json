@@ -1,0 +1,79 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Attach Electron Main (Dev)",
+      "type": "pwa-node",
+      "request": "attach",
+      "port": 9229,
+      "restart": true,
+      "timeout": 30000,
+      "cwd": "${workspaceFolder}/apps/desktop",
+      "sourceMaps": true,
+      "skipFiles": ["<node_internals>/**"],
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/apps/desktop/dist-electron/**/*.js",
+        "!**/node_modules/**"
+      ],
+      "outFiles": ["${workspaceFolder}/apps/desktop/dist-electron/**/*.js"],
+      "preLaunchTask": "Dev Desktop App",
+      "postDebugTask": "Stop Desktop Dev App"
+    },
+    {
+      "name": "Attach Electron Renderer (Dev)",
+      "type": "pwa-chrome",
+      "request": "attach",
+      "port": 9222,
+      "webRoot": "${workspaceFolder}/apps/desktop/src/renderer",
+      "sourceMaps": true,
+      "timeout": 30000,
+      "sourceMapPathOverrides": {
+        "/src/*": "${workspaceFolder}/apps/desktop/src/*",
+        "vite:///*": "${workspaceFolder}/apps/desktop/*",
+        "file:///*": "*",
+        "/@fs/*": "*"
+      },
+      "preLaunchTask": "Dev Desktop App"
+    },
+    {
+      "name": "Debug Electron Main",
+      "type": "pwa-node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/apps/desktop",
+      "runtimeExecutable": "${workspaceFolder}/node_modules/.bin/electron.cmd",
+      "args": [".", "--remote-debugging-port=9222"],
+      "preLaunchTask": "Build Desktop App",
+      "outFiles": ["${workspaceFolder}/apps/desktop/dist-electron/**/*.js"],
+      "sourceMaps": true,
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Attach Electron Renderer",
+      "type": "pwa-chrome",
+      "request": "attach",
+      "port": 9222,
+      "webRoot": "${workspaceFolder}/apps/desktop/src/renderer",
+      "sourceMaps": true,
+      "timeout": 30000,
+      "sourceMapPathOverrides": {
+        "/src/*": "${workspaceFolder}/apps/desktop/src/*",
+        "vite:///*": "${workspaceFolder}/apps/desktop/*",
+        "file:///*": "*",
+        "/@fs/*": "*"
+      }
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Debug Desktop App (Dev)",
+      "configurations": ["Attach Electron Main (Dev)", "Attach Electron Renderer (Dev)"],
+      "stopAll": true
+    },
+    {
+      "name": "Debug Desktop App",
+      "configurations": ["Debug Electron Main", "Attach Electron Renderer"],
+      "stopAll": true
+    }
+  ]
+}

@@ -56,19 +56,56 @@ export const registerIpcHandlers = (services: BusinessBridge) => {
   ipcMain.handle(`${IPC_CHANNELS.collection}:removeFromPlaylist`, (_event, input) =>
     services.collection.removeFromPlaylist(input)
   );
-  ipcMain.handle(`${IPC_CHANNELS.collection}:toggleFavorite`, (_event, trackId) =>
-    services.collection.toggleFavorite(trackId)
+  ipcMain.handle(`${IPC_CHANNELS.collection}:toggleFavorite`, (_event, itemId) =>
+    services.collection.toggleFavorite(itemId)
   );
-  ipcMain.handle(`${IPC_CHANNELS.collection}:getFavorites`, () => services.collection.getFavorites());
-  ipcMain.handle(`${IPC_CHANNELS.collection}:getRecentHistory`, (_event, limit) =>
-    services.collection.getRecentHistory(limit)
+  ipcMain.handle(`${IPC_CHANNELS.collection}:getFavorites`, (_event, mode) => services.collection.getFavorites(mode));
+  ipcMain.handle(`${IPC_CHANNELS.collection}:getRecentHistory`, (_event, limit, mode) =>
+    services.collection.getRecentHistory(limit, mode)
   );
-  ipcMain.handle(`${IPC_CHANNELS.collection}:recordPlay`, (_event, trackId) => services.collection.recordPlay(trackId));
+  ipcMain.handle(`${IPC_CHANNELS.collection}:recordPlay`, (_event, itemId, sourceType, sourceId) =>
+    services.collection.recordPlay(itemId, sourceType, sourceId)
+  );
+
+  ipcMain.handle(`${IPC_CHANNELS.online}:searchTracks`, (_event, query) => services.online.searchTracks(query));
+  ipcMain.handle(`${IPC_CHANNELS.online}:getCurrentUser`, () => services.online.getCurrentUser());
+  ipcMain.handle(`${IPC_CHANNELS.online}:createQrLoginSession`, () => services.online.createQrLoginSession());
+  ipcMain.handle(`${IPC_CHANNELS.online}:checkQrLoginSession`, (_event, key) => services.online.checkQrLoginSession(key));
+  ipcMain.handle(`${IPC_CHANNELS.online}:getLikedTracks`, () => services.online.getLikedTracks());
+  ipcMain.handle(`${IPC_CHANNELS.online}:getDailyRecommendedSongs`, () => services.online.getDailyRecommendedSongs());
+  ipcMain.handle(`${IPC_CHANNELS.online}:getPersonalFmTracks`, () => services.online.getPersonalFmTracks());
+  ipcMain.handle(`${IPC_CHANNELS.online}:trashPersonalFmTrack`, (_event, itemId) => services.online.trashPersonalFmTrack(itemId));
+  ipcMain.handle(`${IPC_CHANNELS.online}:getTopArtists`, (_event, limit) => services.online.getTopArtists(limit));
+  ipcMain.handle(`${IPC_CHANNELS.online}:listArtists`, (_event, query) => services.online.listArtists(query));
+  ipcMain.handle(`${IPC_CHANNELS.online}:getArtistDetail`, (_event, artistId) => services.online.getArtistDetail(artistId));
+  ipcMain.handle(`${IPC_CHANNELS.online}:getNewestAlbums`, (_event, limit) => services.online.getNewestAlbums(limit));
+  ipcMain.handle(`${IPC_CHANNELS.online}:listAlbums`, (_event, query) => services.online.listAlbums(query));
+  ipcMain.handle(`${IPC_CHANNELS.online}:getAlbumDetail`, (_event, albumId) => services.online.getAlbumDetail(albumId));
+  ipcMain.handle(`${IPC_CHANNELS.online}:getChartsOverview`, () => services.online.getChartsOverview());
+  ipcMain.handle(`${IPC_CHANNELS.online}:getDailyRecommendedPlaylists`, () => services.online.getDailyRecommendedPlaylists());
+  ipcMain.handle(`${IPC_CHANNELS.online}:getHighqualityPlaylists`, (_event, limit) => services.online.getHighqualityPlaylists(limit));
+  ipcMain.handle(`${IPC_CHANNELS.online}:getPlaylistCategories`, () => services.online.getPlaylistCategories());
+  ipcMain.handle(`${IPC_CHANNELS.online}:getPlaylistsByCategory`, (_event, category, limit) =>
+    services.online.getPlaylistsByCategory(category, limit)
+  );
+  ipcMain.handle(`${IPC_CHANNELS.online}:getRecommendedPlaylists`, (_event, limit) => services.online.getRecommendedPlaylists(limit));
+  ipcMain.handle(`${IPC_CHANNELS.online}:getPlaylistDetail`, (_event, playlistId) => services.online.getPlaylistDetail(playlistId));
+  ipcMain.handle(`${IPC_CHANNELS.online}:getTrack`, (_event, itemId) => services.online.getTrack(itemId));
+  ipcMain.handle(`${IPC_CHANNELS.online}:resolvePlayback`, (_event, itemId) => services.online.resolvePlayback(itemId));
+  ipcMain.handle(`${IPC_CHANNELS.online}:getLyrics`, (_event, itemId) => services.online.getLyrics(itemId));
+  ipcMain.handle(`${IPC_CHANNELS.online}:download`, (_event, itemId) => services.online.download(itemId));
+  ipcMain.handle(`${IPC_CHANNELS.online}:listDownloads`, () => services.online.listDownloads());
+  ipcMain.handle(`${IPC_CHANNELS.online}:getDefaultDownloadDirectory`, () => services.online.getDefaultDownloadDirectory());
+  ipcMain.handle(`${IPC_CHANNELS.online}:getDefaultCacheDirectory`, () => services.online.getDefaultCacheDirectory());
+  ipcMain.handle(`${IPC_CHANNELS.online}:clearCachedMedia`, () => services.online.clearCachedMedia());
 
   ipcMain.handle(`${IPC_CHANNELS.settings}:getAll`, () => services.settings.getAll());
   ipcMain.handle(`${IPC_CHANNELS.settings}:getSetting`, (_event, key) => services.settings.getSetting(key));
   ipcMain.handle(`${IPC_CHANNELS.settings}:setSetting`, (_event, key, value) =>
     services.settings.setSetting(key, value)
+  );
+  ipcMain.handle(`${IPC_CHANNELS.settings}:setManySettings`, (_event, records) =>
+    services.settings.setManySettings(records)
   );
   ipcMain.handle(`${IPC_CHANNELS.audio}:analyzeReplayGain`, (_event, trackId) =>
     services.audio.analyzeReplayGain(trackId)

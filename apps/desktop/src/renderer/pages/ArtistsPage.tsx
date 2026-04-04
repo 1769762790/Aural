@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LibraryBrowser, type LibraryBrowserSortOption } from "@renderer/components/LibraryBrowser";
+import { ArtistBrowserView } from "@renderer/components/artist/ArtistBrowserView";
+import type { LibraryBrowserSortOption } from "@renderer/components/LibraryBrowser";
 import { useAsyncResource } from "@renderer/hooks/useAsyncResource";
 import { bridge } from "@renderer/lib/bridge";
 import { useLibraryStore } from "@renderer/stores/libraryStore";
@@ -27,35 +28,17 @@ export const ArtistsPage = () => {
   const artistList = useMemo(() => artists.data ?? [], [artists.data]);
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-primary">Library View</p>
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <h1 className="text-4xl font-black tracking-[-0.06em] text-foreground">Artists</h1>
-            <p className="mt-2 text-sm text-muted-foreground">Browse every artist discovered in your local music library.</p>
-          </div>
-          <span className="text-sm font-medium text-muted-foreground">{artistList.length} artists</span>
-        </div>
-      </div>
-
-      <LibraryBrowser
-        items={artistList.map((artist) => ({
-          id: artist.id,
-          title: artist.name,
-          subtitle: `${artist.trackCount} tracks`,
-          meta: `${artist.albumCount} albums`,
-          coverPath: artist.coverPath,
-          fallbackSeed: artist.id
-        }))}
-        sortLabel="A-Z"
-        sortOptions={artistSortOptions}
-        selectedSort={sort}
-        onSortChange={setSort}
-        emptyTitle="No artists available."
-        emptyDescription="Import more local music to populate the artist shelf."
-        onItemClick={(artist) => void navigate(`/artists/${artist.id}`)}
-      />
-    </div>
+    <ArtistBrowserView
+      eyebrow="Library View"
+      title="Artists"
+      description="Browse every artist discovered in your local music library."
+      artists={artistList}
+      sort={sort}
+      sortOptions={artistSortOptions}
+      emptyTitle="No artists available."
+      emptyDescription="Import more local music to populate the artist shelf."
+      onSortChange={setSort}
+      onArtistSelect={(artist) => void navigate(`/artists/${artist.id}`)}
+    />
   );
 };
