@@ -1,18 +1,20 @@
 import { resolvePlayableCoverUrl } from "@/lib/playable";
+import { cn } from "@/lib/utils";
 import { PlayableItem } from "@aural/domain";
 import { formatDuration } from "@renderer/lib/formatters";
 
 interface TrackListItemProps {
   track: PlayableItem;
+  isActive: boolean;
   onRowDoubleClick: (track: PlayableItem) => void;
 }
 
 
-const TrackListItem = ({track, onRowDoubleClick}: TrackListItemProps) => {
+const TrackListItem = ({track, isActive, onRowDoubleClick}: TrackListItemProps) => {
   const coverUrl = resolvePlayableCoverUrl(track)
 
   return (
-<div className="w-full grid grid-cols-3 border-box px-[15px] py-[15px] rounded-sm hover:bg-muted/80 cursor-pointer" onDoubleClick={() => onRowDoubleClick(track)}>
+<div className={cn("w-full grid grid-cols-3 border-box px-[15px] py-[15px] rounded-sm hover:bg-muted/80 cursor-pointer", isActive && "bg-muted")} onDoubleClick={() => onRowDoubleClick(track)}>
   {/* 第一列：歌曲信息 */}
   <div className="flex items-center min-w-0">
     <img

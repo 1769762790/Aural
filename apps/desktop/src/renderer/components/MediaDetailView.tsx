@@ -14,6 +14,7 @@ import { buildPlaylistHeroArtwork } from "@renderer/lib/playlistArtwork";
 import { resolvePlayableCoverUrl } from "@renderer/lib/playable";
 import { usePlayerStore } from "@renderer/stores/playerStore";
 import TrackList from "./TrackList";
+import { bridge } from "@/lib/bridge";
 
 interface MediaDetailViewProps {
   backLabel?: string;
@@ -151,6 +152,11 @@ export const MediaDetailView = ({
     [currentItem?.id, renderTrackActions]
   );
 
+  const downloadTrack = async (itemId: string) => {
+    await bridge.online.download(itemId);
+    // await refreshDownloads?.();
+  };
+
   return (
     <div className="space-y-10">
       <section className="grid gap-8 xl:grid-cols-[320px_minmax(0,1fr)] xl:items-center">
@@ -203,26 +209,9 @@ export const MediaDetailView = ({
       </section>
 
       <section className="space-y-4">
-        {/* <DataTable
-          columns={columns}
-          data={tracks}
-          getRowId={(track) => track.id}
-          onRowDoubleClick={(row) => onTrackPlay(row.original)}
-          className="rounded-none border-0 bg-transparent shadow-none"
-          tableClassName="w-full table-fixed"
-          rowClassName={(row) =>
-            row.original.id === currentItem?.id
-              ? "bg-accent/55 shadow-[inset_0_0_0_1px_rgba(167,139,250,0.14),0_18px_40px_rgba(0,0,0,0.12)] [&>td:first-child]:rounded-l-[24px] [&>td:last-child]:rounded-r-[24px]"
-              : "hover:bg-accent/35 [&>td:first-child]:rounded-l-[24px] [&>td:last-child]:rounded-r-[24px]"
-          }
-          renderRowContextMenu={
-            trackContextMenuActions
-              ? (row) => <PlayableItemContextMenu item={row.original} {...trackContextMenuActions} />
-              : undefined
-          }
-        /> */}
-        <TrackList tracks={tracks} onRowDoubleClick={onTrackPlay} />
+        <TrackList tracks={tracks} onRowDoubleClick={onTrackPlay} onPlay={onTrackPlay} onDownload={downloadTrack} />
       </section>
     </div>
   );
 };
+
